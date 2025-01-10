@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ meeting.title }} - Meeting Details{% endblock %}
+
+{% block nav_actions %}
+<div class="flex space-x-2">
+    <a href="{{ url_for('index') }}" 
+       class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+        Back to List
+    </a>
+    <div class="dropdown relative inline-block">
+        <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" 
+                onclick="toggleDropdown()">
+            Export
+        </button>
+        <div id="exportDropdown" 
+             class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+            <div class="py-1">
+                <a href="{{ url_for('export_meeting', meeting_id=meeting.id, format='txt') }}"
+                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Text File (.txt)
+                </a>
+                <a href="{{ url_for('export_meeting', meeting_id=meeting.id, format='md') }}"
+                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    Markdown (.md)
+                </a>
+                <a href="{{ url_for('export_meeting', meeting_id=meeting.id, format='json') }}"
+                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    JSON
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <!-- Meeting Header -->
+    <div class="px-4 py-5 sm:px-6">
+        <h1 class="text-2xl font-bold text-gray-900">
+            {{ meeting.title }}
+        </h1>
+        <p class="mt-1 text-sm text-gray-500">
+            {{ meeting.date|format_datetime }} • Duration: {{ meeting.duration|format_duration }}
+        </p>
+    </div>
+
+    <!-- Audio Player -->
+    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-3">Audio Recording</h2>
+        <audio controls class="w-full">
+            <source src="{{ url_for('get_audio', meeting_id=meeting.id) }}" type="audio/wav">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
+
+    <!-- Summary -->
+    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-3">Summary</h2>
+        <div class="prose max-w-none">
+            {% if meeting.summary %}
+                {{ meeting.summary|markdown|default(meeting.summary, true) }}
+            {% else %}
+                <p class="text-gray-500">No summary available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Transcript -->
+    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-3">Transcript</h2>
+        <div class="space-y-4">
+            {% for segment in meeting.transcript %}
+                <div class="flex space-x-4">
+                    <div class="w-24 flex-shrink-0">
+                        <span class="text-sm text-gray-500">
+                            {{ segment.start_time|format_duration }}
+                        </span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-900">
+                            {{ segment.speaker }}
+                        </p>
+                        <p class="mt-1">
+                            {{ segment.text }}
+                        </p>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function toggleDropdown() {
+        document.getElementById('exportDropdown').classList.toggle('hidden');
+    }
+
+    // Close dropdown when clicking outside
+    window.onclick = function(event) {
+        if (!event.target.matches('.dropdown button')) {
+            const dropdowns = document.getElementsByClassName('dropdown-content');
+            for (const dropdown of dropdowns) {
+                if (!dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}
