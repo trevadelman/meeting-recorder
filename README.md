@@ -2,6 +2,8 @@
 
 A Flask-based application for recording, transcribing, and summarizing meetings with speaker diarization.
 
+The application is available at: https://github.com/trevadelman/meeting-recorder.git
+
 ## Features
 
 - **Audio Recording**
@@ -30,7 +32,7 @@ A Flask-based application for recording, transcribing, and summarizing meetings 
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.11.11
 - Flask
 - SoundDevice
 - SpeechBrain
@@ -42,13 +44,13 @@ A Flask-based application for recording, transcribing, and summarizing meetings 
 
 1. Clone the repository:
    ```bash
-   git clone [repository-url]
+   git clone https://github.com/trevadelman/meeting-recorder.git
    cd meeting-recorder
    ```
 
-2. Create and activate a virtual environment:
+2. Create and activate a virtual environment (requires Python 3.11.11):
    ```bash
-   python -m venv venv
+   python3.11 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
