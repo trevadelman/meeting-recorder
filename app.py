@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import markdown
+import sqlite3
 
 app = Flask(__name__)
 app.config.from_object(FlaskConfig)
@@ -184,7 +185,9 @@ def delete_meeting(meeting_id):
             export_file.unlink()
         
         # Delete from database
-        recorder.db.conn.execute("DELETE FROM meetings WHERE id = ?", (meeting_id,))
+        with sqlite3.connect(recorder.db.db_path) as conn:
+            conn.execute("DELETE FROM meetings WHERE id = ?", (meeting_id,))
+            conn.commit()
         
         return jsonify({'message': 'Meeting deleted successfully'})
         
