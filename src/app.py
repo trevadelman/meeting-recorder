@@ -239,6 +239,24 @@ def get_audio(meeting_id):
         mimetype='audio/wav'
     )
 
+def cleanup_orphaned_recordings():
+    """Clean up any recording files that don't have associated database entries"""
+    try:
+        # Get all meeting IDs from database
+        all_meetings = recorder.db.get_all_meetings()
+        valid_audio_paths = {meeting.audio_path for meeting in all_meetings}
+        
+        # Check recordings directory
+        recordings_dir = BASE_DIR / "data/recordings"
+        for recording_file in recordings_dir.glob("meeting_*.wav"):
+            if str(recording_file) not in valid_audio_paths:
+                try:
+                    recording_file.unlink()
+                except Exception as e:
+                    print(f"Error deleting orphaned recording {recording_file}: {e}")
+    except Exception as e:
+        print(f"Error during orphaned recordings cleanup: {e}")
+
 @app.route('/delete/<meeting_id>', methods=['POST'])
 def delete_meeting(meeting_id):
     """Delete a meeting and its associated files"""
@@ -248,8 +266,9 @@ def delete_meeting(meeting_id):
     
     try:
         # Delete audio file
-        if os.path.exists(meeting.audio_path):
-            os.remove(meeting.audio_path)
+        audio_path = Path(meeting.audio_path)
+        if audio_path.exists():
+            audio_path.unlink()
         
         # Delete any exports
         export_pattern = f"meeting_*_{meeting.id[:8]}.*"
@@ -259,6 +278,9 @@ def delete_meeting(meeting_id):
         
         # Delete from database
         recorder.db.delete_meeting(meeting_id)
+        
+        # Clean up any orphaned recordings
+        cleanup_orphaned_recordings()
         
         return jsonify({'message': 'Meeting deleted successfully'})
         
