@@ -9,8 +9,9 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
 - **Audio Recording**
   - Client-side recording using browser's microphone
   - Support for all client audio input devices
-  - Real-time recording progress tracking
-  - Customizable recording duration
+  - Manual start/stop recording control
+  - Real-time duration tracking
+  - Visual recording status and progress indicators
   - Network-accessible recording capabilities
 
 - **Speech Processing**
@@ -95,9 +96,10 @@ The application can be configured through several files in the config/ directory
 3. Recording a Meeting:
    - Allow microphone access when prompted
    - Select your preferred input device from your computer's available microphones
-   - Set the meeting duration
    - Click "Start Recording"
-   - Wait for processing to complete
+   - Monitor recording duration in real-time
+   - Click "Stop Recording" when finished
+   - Wait for processing to complete (progress indicators will show status)
 
 4. Managing Recordings:
    - View all recordings on the main page
