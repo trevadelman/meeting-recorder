@@ -6,6 +6,13 @@ import wave
 from pathlib import Path
 import torch
 import torchaudio
+import logging
+import warnings
+# Configure logging
+logging.getLogger('speechbrain').setLevel(logging.WARNING)
+warnings.filterwarnings('ignore', category=UserWarning, module='speechbrain')
+warnings.filterwarnings('ignore', category=FutureWarning, module='speechbrain')
+
 from speechbrain.pretrained import EncoderClassifier
 from sklearn.cluster import AgglomerativeClustering
 from faster_whisper import WhisperModel

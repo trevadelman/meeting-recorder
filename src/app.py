@@ -9,6 +9,12 @@ from pathlib import Path
 from datetime import datetime
 import os
 import threading
+import logging
+
+# Configure logging
+logging.getLogger('werkzeug').setLevel(logging.INFO)
+# Only show HTTP requests, not the "Running on..." messages
+logging.getLogger('werkzeug.serving').setLevel(logging.ERROR)
 
 from utils import setup_python_path
 setup_python_path()
