@@ -110,16 +110,29 @@ def select_device():
 @app.route('/')
 def index():
     """Main page - list all meetings"""
+    # Get filter parameters
     tag_filters = request.args.getlist('tags[]')
-    meetings = recorder.db.get_all_meetings(tag_filters if tag_filters else None)
+    title_search = request.args.get('title', '').strip()
+    transcript_search = request.args.get('transcript', '').strip()
+    
+    # Get filtered meetings
+    meetings = recorder.db.get_all_meetings(
+        tag_filters=tag_filters if tag_filters else None,
+        title_search=title_search if title_search else None,
+        transcript_search=transcript_search if transcript_search else None
+    )
+    
     devices = recorder.audio_processor.list_input_devices()
     all_tags = recorder.db.get_all_tags()
+    
     return render_template('index.html', 
                          meetings=meetings,
                          recording_state=recording_state,
                          devices=devices,
                          all_tags=all_tags,
-                         current_tags=tag_filters)
+                         current_tags=tag_filters,
+                         title_search=title_search,
+                         transcript_search=transcript_search)
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():

@@ -152,30 +152,73 @@ class DatabaseManager:
                 )
         return None
 
-    def get_all_meetings(self, tag_filters: Optional[List[str]] = None) -> List[Meeting]:
-        """Retrieve all meetings ordered by date, optionally filtered by multiple tags"""
+    def get_all_meetings(
+        self, 
+        tag_filters: Optional[List[str]] = None,
+        title_search: Optional[str] = None,
+        transcript_search: Optional[str] = None
+    ) -> List[Meeting]:
+        """
+        Retrieve all meetings ordered by date with optional filters:
+        - tag_filters: List of tags (AND logic)
+        - title_search: Case-insensitive partial match on title
+        - transcript_search: Case-insensitive search in transcript text
+        """
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             
+            # Base query
+            query = "SELECT DISTINCT m.* FROM meetings m"
+            params = []
+            where_clauses = []
+            
+            # Add tag filtering
             if tag_filters:
-                # Get meetings that have ALL the specified tags
-                placeholders = ','.join(['?' for _ in tag_filters])
-                results = conn.execute(f"""
-                    SELECT m.* FROM meetings m
+                tag_placeholders = ','.join(['?' for _ in tag_filters])
+                query += f"""
                     WHERE m.id IN (
                         SELECT mt.meeting_id
                         FROM meeting_tags mt
                         JOIN tags t ON t.id = mt.tag_id
-                        WHERE t.name IN ({placeholders})
+                        WHERE t.name IN ({tag_placeholders})
                         GROUP BY mt.meeting_id
                         HAVING COUNT(DISTINCT t.name) = ?
                     )
-                    ORDER BY m.date DESC
-                """, (*tag_filters, len(tag_filters))).fetchall()
-            else:
-                results = conn.execute(
-                    "SELECT * FROM meetings ORDER BY date DESC"
-                ).fetchall()
+                """
+                params.extend(tag_filters)
+                params.append(len(tag_filters))
+            
+            # Add title search
+            if title_search:
+                where_clause = "LOWER(m.title) LIKE LOWER(?)"
+                params.append(f"%{title_search}%")
+                where_clauses.append(where_clause)
+            
+            # Add transcript search
+            if transcript_search:
+                where_clause = """
+                    m.id IN (
+                        SELECT m2.id
+                        FROM meetings m2, json_each(m2.transcript) as je
+                        WHERE LOWER(json_extract(je.value, '$.text')) LIKE LOWER(?)
+                    )
+                """
+                params.append(f"%{transcript_search}%")
+                where_clauses.append(where_clause)
+            
+            # Combine where clauses
+            if where_clauses:
+                if tag_filters:
+                    query += " AND "
+                else:
+                    query += " WHERE "
+                query += " AND ".join(where_clauses)
+            
+            # Add ordering
+            query += " ORDER BY m.date DESC"
+            
+            # Execute query
+            results = conn.execute(query, params).fetchall()
             
             meetings = []
             for result in results:

@@ -163,29 +163,64 @@
 <div class="bg-white shadow sm:rounded-lg">
     <div class="border-b border-gray-200">
         <div class="p-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div class="space-y-4">
+                <!-- Header -->
                 <div>
                     <h2 class="text-xl font-semibold text-gray-900">
-                        {% if current_tags %}
+                        {% if current_tags or title_search or transcript_search %}
                             Filtered Meetings
                         {% else %}
                             All Meetings
                         {% endif %}
                     </h2>
-                    {% if current_tags %}
+                    {% if current_tags or title_search or transcript_search %}
                         <p class="mt-1 text-sm text-gray-500">
-                            Showing meetings with all selected tags
+                            {% if current_tags %}Filtered by tags{% endif %}
+                            {% if title_search %}{% if current_tags %} • {% endif %}Title contains "{{ title_search }}"{% endif %}
+                            {% if transcript_search %}{% if current_tags or title_search %} • {% endif %}Transcript contains "{{ transcript_search }}"{% endif %}
                         </p>
                     {% endif %}
                 </div>
-                <div class="w-full sm:w-96">
-                    <select id="tagFilter" class="w-full" multiple="multiple">
-                        {% for tag in all_tags %}
-                            <option value="{{ tag }}" {% if tag in current_tags %}selected{% endif %}>
-                                {{ tag }}
-                            </option>
-                        {% endfor %}
-                    </select>
+
+                <!-- Search and Filter Controls -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Title Search -->
+                    <div>
+                        <label for="titleSearch" class="block text-sm font-medium text-gray-700 mb-1">
+                            Search by Title
+                        </label>
+                        <input type="text" 
+                               id="titleSearch" 
+                               value="{{ title_search }}"
+                               placeholder="Search meeting titles..."
+                               class="search-input shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                    </div>
+
+                    <!-- Transcript Search -->
+                    <div>
+                        <label for="transcriptSearch" class="block text-sm font-medium text-gray-700 mb-1">
+                            Search in Transcripts
+                        </label>
+                        <input type="text" 
+                               id="transcriptSearch" 
+                               value="{{ transcript_search }}"
+                               placeholder="Search meeting transcripts..."
+                               class="search-input shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                    </div>
+
+                    <!-- Tag Filter -->
+                    <div>
+                        <label for="tagFilter" class="block text-sm font-medium text-gray-700 mb-1">
+                            Filter by Tags
+                        </label>
+                        <select id="tagFilter" class="w-full" multiple="multiple">
+                            {% for tag in all_tags %}
+                                <option value="{{ tag }}" {% if tag in current_tags %}selected{% endif %}>
+                                    {{ tag }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -246,20 +281,52 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ url_for('static', filename='js/audio-recorder.js') }}"></script>
 <script>
-    // Initialize Select2
+    // Initialize Select2 and Search
     $(document).ready(function() {
+        // Initialize Select2
         $('#tagFilter').select2({
-            placeholder: 'Filter by tags...',
+            placeholder: 'Select tags...',
             allowClear: true,
             width: '100%',
             closeOnSelect: false
-        }).on('change', function() {
-            const tags = $(this).val();
+        });
+
+        // Function to update filters
+        function updateFilters() {
+            const tags = $('#tagFilter').val();
+            const title = $('#titleSearch').val().trim();
+            const transcript = $('#transcriptSearch').val().trim();
+            
             const params = new URLSearchParams();
+            
             if (tags && tags.length > 0) {
                 tags.forEach(tag => params.append('tags[]', tag));
             }
+            if (title) {
+                params.append('title', title);
+            }
+            if (transcript) {
+                params.append('transcript', transcript);
+            }
+            
             window.location.href = '/?' + params.toString();
+        }
+
+        // Add debounced search handlers
+        let searchTimeout;
+        $('.search-input').on('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(updateFilters, 500);
+        });
+
+        // Handle tag changes
+        $('#tagFilter').on('change', updateFilters);
+
+        // Handle Enter key in search inputs
+        $('#titleSearch, #transcriptSearch').on('keypress', function(e) {
+            if (e.key === 'Enter') {
+                updateFilters();
+            }
         });
     });
 
