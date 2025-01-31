@@ -223,7 +223,8 @@ def delete_meeting(meeting_id):
         
         # Delete any exports
         export_pattern = f"meeting_*_{meeting.id[:8]}.*"
-        for export_file in Path(EXPORT_FORMATS).glob(export_pattern):
+        export_dir = BASE_DIR / "data/exports"
+        for export_file in export_dir.glob(export_pattern):
             export_file.unlink()
         
         # Delete from database
