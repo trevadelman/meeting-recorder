@@ -12,7 +12,53 @@ class MeetingRecorder:
         self.db = DatabaseManager()
         self.audio_processor = AudioProcessor()
         self.llm_processor = LLMProcessor()
-    
+        self.current_recording = None
+        self.recording_start_time = None
+        self.status_callback = None
+
+    def start_recording(
+        self, 
+        title: str = None,
+        status_callback: Optional[Callable] = None
+    ) -> bool:
+        """Start recording a new meeting"""
+        try:
+            self.status_callback = status_callback
+            self.recording_start_time = datetime.now()
+            self.title = title
+            self.current_recording = self.audio_processor.start_recording()
+            if status_callback:
+                status_callback("Recording started...")
+            return True
+        except Exception as e:
+            self.current_recording = None
+            self.recording_start_time = None
+            self.status_callback = None
+            raise e
+
+    def stop_recording(self) -> str:
+        """Stop recording and return the audio path"""
+        if not self.current_recording:
+            raise RuntimeError("No active recording")
+
+        try:
+            # Stop recording and get audio path
+            audio_path = self.audio_processor.stop_recording(self.current_recording)
+
+            # Clear recording state
+            self.current_recording = None
+            self.recording_start_time = None
+            self.status_callback = None
+
+            return audio_path
+
+        except Exception as e:
+            # Clean up recording state on error
+            self.current_recording = None
+            self.recording_start_time = None
+            self.status_callback = None
+            raise e
+
     def record_meeting(
         self, 
         duration: float, 
@@ -20,32 +66,29 @@ class MeetingRecorder:
         status_callback: Optional[Callable] = None, 
         audio_data=None
     ) -> Meeting:
-        """Record and process a new meeting"""
-        # Record audio or use provided audio data
-        if audio_data:
-            audio_array, sample_rate = audio_data
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = self.audio_processor.audio_dir / f"meeting_{timestamp}.wav"
-            
-            with wave.open(str(filename), 'wb') as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(sample_rate)
-                wf.writeframes(audio_array.tobytes())
-            
-            audio_path = str(filename)
-        else:
-            _, audio_path = self.audio_processor.record_meeting(duration, status_callback)
+        """Record and process a meeting with provided audio data"""
+        if not audio_data:
+            raise ValueError("Audio data is required")
+
+        audio_array, sample_rate = audio_data
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = self.audio_processor.audio_dir / f"meeting_{timestamp}.wav"
+        
+        with wave.open(str(filename), 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(audio_array.tobytes())
         
         # Process audio
-        transcript = self.audio_processor.process_audio(audio_path, status_callback)
+        transcript = self.audio_processor.process_audio(str(filename), status_callback)
         
         if status_callback:
             status_callback("Generating summary...")
         
         # Generate meeting ID
         meeting_id = hashlib.md5(
-            f"{audio_path}{datetime.now().isoformat()}".encode()
+            f"{filename}{datetime.now().isoformat()}".encode()
         ).hexdigest()
         
         # Create meeting object
@@ -54,7 +97,7 @@ class MeetingRecorder:
             title=title or f"Meeting {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             date=datetime.now(),
             duration=duration,
-            audio_path=audio_path,
+            audio_path=str(filename),
             transcript=transcript
         )
         

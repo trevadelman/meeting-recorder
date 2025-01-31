@@ -6,6 +6,22 @@
 <!-- Add Select2 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+    }
+
+    .recording-pulse {
+        animation: pulse 2s infinite;
+    }
+
     /* Custom Select2 Styling */
     .select2-container--default .select2-selection--multiple {
         border: 1px solid #e5e7eb;
@@ -118,13 +134,6 @@
                         <input type="text" name="title" 
                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                     </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">
-                            Duration (seconds)
-                        </label>
-                        <input type="number" name="duration" value="60" min="10" max="3600"
-                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    </div>
                     <div class="flex items-center justify-between">
                         <button type="button" id="cancelRecording"
                                 class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
@@ -147,13 +156,21 @@
         <div class="mt-3 text-center">
             <h3 class="text-lg leading-6 font-medium text-gray-900">Recording in Progress</h3>
             <div class="mt-2 px-7 py-3">
-                <div class="recording-pulse inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-red-500">
-                    Recording...
+                <div class="flex flex-col items-center space-y-4">
+                    <div id="recordingIndicator" class="recording-pulse inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-red-500">
+                        Recording...
+                    </div>
+                    <div id="progressText" class="text-sm text-gray-500">
+                        Duration: <span id="recordingDuration">00:00</span>
+                    </div>
+                    <button id="stopRecording" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Stop Recording
+                    </button>
                 </div>
-                <div id="progressText" class="mt-4 text-sm text-gray-500">
-                    Time remaining: <span id="timeRemaining">00:00</span>
+                <div id="processingContainer" class="mt-4 text-center hidden">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <div id="processingStatus" class="mt-2 text-sm text-gray-500"></div>
                 </div>
-                <div id="processingStatus" class="mt-2 text-sm text-gray-500"></div>
             </div>
         </div>
     </div>
@@ -375,6 +392,13 @@
         document.getElementById('recordingModal').classList.add('hidden');
     });
 
+    // Format duration display
+    function formatDuration(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
     // Recording form submission
     document.getElementById('recordingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -384,7 +408,6 @@
         }
 
         const formData = new FormData(e.target);
-        const duration = parseInt(formData.get('duration'));
         const deviceId = document.getElementById('inputDevice').value;
         
         try {
@@ -400,16 +423,10 @@
             document.getElementById('recordingModal').classList.add('hidden');
             document.getElementById('progressModal').classList.remove('hidden');
             
-            // Start progress tracking
-            let remainingTime = duration;
+            // Start duration tracking
             recordingInterval = setInterval(() => {
-                remainingTime--;
-                document.getElementById('timeRemaining').textContent = formatDuration(remainingTime);
-                
-                if (remainingTime <= 0) {
-                    clearInterval(recordingInterval);
-                    finishRecording(formData);
-                }
+                const duration = (Date.now() - recordingStartTime) / 1000;
+                document.getElementById('recordingDuration').textContent = formatDuration(duration);
             }, 1000);
             
         } catch (error) {
@@ -417,16 +434,31 @@
         }
     });
 
-    // Handle recording completion
-    async function finishRecording(formData) {
+    // Stop recording button handler
+    document.getElementById('stopRecording').addEventListener('click', async () => {
         try {
-            document.getElementById('processingStatus').textContent = 'Processing recording...';
+            // Stop duration counter
+            clearInterval(recordingInterval);
             
-            // Stop recording and get audio blob
+            // Update UI
+            document.getElementById('recordingIndicator').classList.remove('recording-pulse', 'bg-red-500');
+            document.getElementById('recordingIndicator').classList.add('bg-gray-500');
+            document.getElementById('recordingIndicator').textContent = 'Recording stopped';
+            document.getElementById('stopRecording').disabled = true;
+            
+            // Show processing UI
+            document.getElementById('processingContainer').classList.remove('hidden');
+            document.getElementById('processingStatus').textContent = 'Stopping recording...';
+            
+            // Stop client-side recording
             const audioBlob = await audioRecorder.stopRecording();
             const actualDuration = (Date.now() - recordingStartTime) / 1000;
             
+            // Update processing status
+            document.getElementById('processingStatus').textContent = 'Processing audio...';
+            
             // Upload to server
+            const formData = new FormData(document.getElementById('recordingForm'));
             const response = await audioRecorder.uploadRecording(
                 audioBlob,
                 formData.get('title'),
@@ -440,6 +472,44 @@
         } catch (error) {
             document.getElementById('progressModal').classList.add('hidden');
             showNotification(error.message, 'error');
+        }
+    });
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${
+            type === 'error' ? 'bg-red-500' : 'bg-green-500'
+        } text-white`;
+        notification.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    // Check browser support
+    function checkBrowserSupport() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showNotification('Your browser does not support audio recording', 'error');
+            return false;
+        }
+        return true;
+    }
+
+    // Request microphone permission
+    async function requestMicrophonePermission() {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            return true;
+        } catch (error) {
+            showNotification('Microphone permission denied', 'error');
+            return false;
         }
     }
 

@@ -17,10 +17,16 @@
                     <h2 class="text-2xl font-bold text-gray-900">
                         {{ meeting.title }}
                     </h2>
-                    <p class="mt-1 text-sm text-gray-500">
-                        {{ meeting.date|format_datetime }} • 
-                        Duration: {{ meeting.duration|format_duration }}
-                    </p>
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-500">
+                            {{ meeting.date|format_datetime }} • 
+                            Duration: {{ meeting.duration|format_duration }}
+                        </p>
+                        <audio controls class="w-full">
+                            <source src="{{ url_for('get_audio', meeting_id=meeting.id) }}" type="audio/wav">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
                 </div>
                 <div class="flex space-x-2">
                     <a href="{{ url_for('export_meeting', meeting_id=meeting.id) }}" 
@@ -111,6 +117,24 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+    // Show notification
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${
+            type === 'error' ? 'bg-red-500' : 'bg-green-500'
+        } text-white`;
+        notification.textContent = message;
+        
+        // Add to document
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
     // Initialize Select2
     $(document).ready(function() {
         $('#newTag').select2({

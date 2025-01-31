@@ -91,39 +91,59 @@ class AudioRecorder {
                 }
             };
             
-            console.log('Starting recording with MIME type:', mimeType);
-            
             // Start recording and request data every 1 second
             this.mediaRecorder.start(1000);
-            console.log('MediaRecorder state:', this.mediaRecorder.state);
+            
+            // Send start recording request to server
+            const response = await fetch('/start_recording', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    title: document.querySelector('input[name="title"]').value
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to start server-side recording');
+            }
+            
             return true;
         } catch (error) {
-            console.error('Error starting recording:', error);
-            // Include more detailed error information
+            if (this.stream) {
+                this.stream.getTracks().forEach(track => track.stop());
+            }
             throw new Error(`Failed to start recording: ${error.message}`);
         }
     }
 
-    stopRecording() {
-        return new Promise((resolve) => {
+    async stopRecording() {
+        return new Promise((resolve, reject) => {
             this.mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                this.stream.getTracks().forEach(track => track.stop());
+                try {
+                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                    this.stream.getTracks().forEach(track => track.stop());
 
-                // Convert to WAV format
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const fileReader = new FileReader();
+                    // Convert to WAV format
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const fileReader = new FileReader();
 
-                fileReader.onload = async (e) => {
-                    const arrayBuffer = e.target.result;
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    
-                    // Convert to WAV
-                    const wavBlob = await this.audioBufferToWav(audioBuffer);
-                    resolve(wavBlob);
-                };
+                    fileReader.onload = async (e) => {
+                        try {
+                            const arrayBuffer = e.target.result;
+                            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                            const wavBlob = await this.audioBufferToWav(audioBuffer);
+                            resolve(wavBlob);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
 
-                fileReader.readAsArrayBuffer(audioBlob);
+                    fileReader.readAsArrayBuffer(audioBlob);
+                } catch (error) {
+                    reject(error);
+                }
             };
 
             this.mediaRecorder.stop();
@@ -193,16 +213,29 @@ class AudioRecorder {
         formData.append('duration', duration);
 
         try {
-            const response = await fetch('/upload_recording', {
+            // First stop server-side recording
+            document.getElementById('processingStatus').textContent = 'Stopping server recording...';
+            const stopResponse = await fetch('/stop_recording', {
+                method: 'POST'
+            });
+
+            if (!stopResponse.ok) {
+                throw new Error('Failed to stop server-side recording');
+            }
+
+            // Update status and upload
+            document.getElementById('processingStatus').textContent = 'Uploading audio...';
+            const uploadResponse = await fetch('/upload_recording', {
                 method: 'POST',
                 body: formData
             });
 
-            if (!response.ok) {
+            if (!uploadResponse.ok) {
                 throw new Error('Failed to upload recording');
             }
 
-            return await response.json();
+            document.getElementById('processingStatus').textContent = 'Processing complete!';
+            return await uploadResponse.json();
         } catch (error) {
             console.error('Error uploading recording:', error);
             throw error;

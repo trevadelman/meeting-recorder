@@ -28,6 +28,8 @@ class AudioProcessor:
             source="speechbrain/spkrec-ecapa-voxceleb",
             savedir="models/pretrained/spkrec-ecapa"
         )
+        self.frames = []
+        self.stream = None
         self.__post_init__()
 
     @staticmethod
@@ -68,43 +70,70 @@ class AudioProcessor:
         self.audio_dir = BASE_DIR / "data/recordings"
         self.audio_dir.mkdir(exist_ok=True)
         
-    def record_meeting(self, duration: float, callback=None) -> Tuple[np.ndarray, str]:
-        """Record audio with progress updates"""
-        print(f"Recording for {duration} seconds...")
+
+    def start_recording(self) -> bool:
+        """Start recording audio"""
         try:
-            recording = sd.rec(
-                int(duration * self.sample_rate),
+            # Create input stream with callback
+            self.frames = []
+            self.stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=1,
                 dtype=np.int16,
                 device=self.input_device,
                 latency='low',
-                blocking=False
+                callback=self._audio_callback
             )
+            self.stream.start()
+            return True
         except Exception as e:
+            self.frames = []
+            self.stream = None
             raise RuntimeError(f"Failed to start recording: {str(e)}")
-        
-        # Progress updates
-        start_time = time.time()
-        while time.time() - start_time < duration:
-            remaining = duration - (time.time() - start_time)
-            if callback:
-                callback(remaining)
-            time.sleep(0.1)
-        
-        sd.wait()
-        
-        # Generate unique filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = self.audio_dir / f"meeting_{timestamp}.wav"
-        
-        with wave.open(str(filename), 'wb') as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(self.sample_rate)
-            wf.writeframes(recording.tobytes())
-        
-        return recording, str(filename)
+
+    def _audio_callback(self, indata, frames, time, status):
+        """Callback to collect audio data"""
+        if status:
+            print(f'Audio callback status: {status}')
+        if len(indata) > 0:
+            self.frames.append(indata.copy())
+
+    def stop_recording(self, _) -> str:
+        """Stop recording and save audio file"""
+        try:
+            if not self.stream:
+                raise RuntimeError("No active recording stream")
+
+            # Stop and close stream
+            self.stream.stop()
+            self.stream.close()
+            self.stream = None
+
+            # Combine all frames
+            if not self.frames:
+                raise RuntimeError("No audio data recorded")
+            recording = np.concatenate(self.frames)
+            self.frames = []
+
+            # Generate unique filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = self.audio_dir / f"meeting_{timestamp}.wav"
+
+            # Save to WAV file
+            with wave.open(str(filename), 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(self.sample_rate)
+                wf.writeframes(recording.tobytes())
+
+            return str(filename)
+        except Exception as e:
+            if self.stream:
+                self.stream.stop()
+                self.stream.close()
+                self.stream = None
+            self.frames = []
+            raise RuntimeError(f"Failed to stop recording: {str(e)}")
 
     def process_audio(self, audio_path: str, callback=None) -> List[TranscriptSegment]:
         if callback:

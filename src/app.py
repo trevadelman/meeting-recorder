@@ -143,23 +143,15 @@ def start_recording():
         }), 400
     
     try:
-        duration = int(request.form.get('duration', FlaskConfig.DEFAULT_RECORDING_DURATION))
-        if not FlaskConfig.MIN_RECORDING_DURATION <= duration <= FlaskConfig.MAX_RECORDING_DURATION:
-            return jsonify({
-                'error': ERROR_MESSAGES['invalid_duration']
-            }), 400
-        
         title = request.form.get('title', '')
         
         def record():
             try:
                 recording_state['status'] = 'recording'
-                recording_state['current_meeting'] = recorder.record_meeting(
-                    duration, 
+                recording_state['current_meeting'] = recorder.start_recording(
                     title,
                     status_callback
                 )
-                recording_state['status'] = 'complete'
             except Exception as e:
                 recording_state['status'] = 'error'
                 recording_state['progress'] = str(e)
@@ -168,13 +160,31 @@ def start_recording():
         recording_state['thread'].start()
         
         return jsonify({
-            'message': 'Recording started',
-            'duration': duration
+            'message': 'Recording started'
         })
         
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/stop_recording', methods=['POST'])
+def stop_recording():
+    """Stop the current recording"""
+    try:
+        if recording_state['status'] != 'recording':
+            return jsonify({'error': 'No active recording'}), 400
+            
+        recorder.stop_recording()
+        recording_state['status'] = 'complete'
+        recording_state['current_meeting'] = None
+        
+        return jsonify({
+            'message': 'Recording stopped'
+        })
+    except Exception as e:
+        recording_state['status'] = 'error'
+        recording_state['progress'] = str(e)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/recording_status')
