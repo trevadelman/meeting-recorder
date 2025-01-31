@@ -82,7 +82,10 @@ The application can be configured through several files in the config/ directory
 
 ## Usage
 
-1. Start the application:
+The application provides two server implementations:
+
+### Flask Server (Web Interface)
+1. Start the Flask server:
    ```bash
    python src/app.py
    ```
@@ -92,6 +95,22 @@ The application can be configured through several files in the config/ directory
    - Network: `https://<server-ip>:5002`
    
    Note: When accessing over HTTPS, you'll need to accept the security warning for the self-signed certificate.
+
+### FastAPI Server (React Backend)
+1. Start the FastAPI server:
+   ```bash
+   cd fastapi
+   ./run.py
+   ```
+
+2. Access the API:
+   - API Endpoints: `http://localhost:8001/api`
+   - Interactive Documentation: `http://localhost:8001/docs`
+   - Alternative Documentation: `http://localhost:8001/redoc`
+
+Both servers can run simultaneously, sharing the same core functionality:
+- Flask server provides the web interface
+- FastAPI server provides a modern REST API for React frontend development
 
 3. Recording a Meeting:
    - Allow microphone access when prompted
@@ -113,24 +132,27 @@ The application can be configured through several files in the config/ directory
 meeting-recorder/
 ├── src/                # Source code
 │   ├── app.py         # Flask application entry point
-│   ├── core/          # Core functionality
+│   ├── core/          # Core functionality (shared)
 │   │   ├── audio.py   # Audio processing
 │   │   ├── db.py      # Database operations
 │   │   ├── llm.py     # LLM processing
 │   │   └── recorder.py # Meeting recorder
 │   └── utils/         # Utility functions
+├── fastapi/           # FastAPI implementation
+│   ├── main.py        # FastAPI application entry point
+│   └── run.py         # Server runner script
 ├── config/            # Configuration files
 │   ├── config.py      # Main configuration
 │   └── ssl/           # SSL certificates
-├── web/              # Web-related files
+├── web/              # Flask web interface
 │   ├── static/       # Static assets
 │   │   └── js/       # JavaScript modules
 │   └── templates/    # HTML templates
-├── data/             # Data storage
+├── data/             # Data storage (shared)
 │   ├── recordings/   # Audio recordings
 │   ├── exports/      # Exported files
 │   └── db/           # Database files
-├── models/           # ML models
+├── models/           # ML models (shared)
 │   └── pretrained/   # Pretrained model files
 ├── tests/            # Test files
 ├── requirements.txt  # Python dependencies
@@ -139,13 +161,26 @@ meeting-recorder/
 
 ## Development
 
-The application is structured into several main components:
+The application provides two server implementations that share core functionality:
 
+### Shared Components (src/core/):
 - **AudioProcessor**: Handles audio processing and transcription
 - **DatabaseManager**: Manages meeting storage and retrieval
 - **MeetingRecorder**: Coordinates recording and processing
 - **LLMProcessor**: Handles meeting summarization
-- **Client-side Recording**: Browser-based audio capture using Web Audio API
+
+### Flask Implementation (src/app.py):
+- Web interface with HTML templates
+- Client-side recording using Web Audio API
+- Real-time status updates
+- Traditional server-rendered pages
+
+### FastAPI Implementation (fastapi/):
+- Modern REST API for React frontend
+- Async request handling
+- Background task processing
+- Automatic API documentation
+- Type validation with Pydantic
 
 ## Contributing
 
