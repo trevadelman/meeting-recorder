@@ -37,8 +37,9 @@ class Meeting:
     summary: Optional[str] = None
 
 class DatabaseManager:
-    def __init__(self, db_path="meetings.db"):
-        self.db_path = db_path
+    def __init__(self):
+        from config import DB_PATH
+        self.db_path = DB_PATH
         self.init_database()
 
     def init_database(self):
@@ -177,7 +178,8 @@ class AudioProcessor:
     def __post_init__(self):
         """Initialize after constructor"""
         self.whisper = WhisperModel("medium", device="cpu", compute_type="int8")
-        self.audio_dir = Path("recordings")
+        from config import BASE_DIR
+        self.audio_dir = BASE_DIR / "recordings"
         self.audio_dir.mkdir(exist_ok=True)
         
     def record_meeting(self, duration: float, callback=None) -> Tuple[np.ndarray, str]:
@@ -346,9 +348,22 @@ class MeetingRecorder:
         self.audio_processor = AudioProcessor()
         self.llm_processor = LLMProcessor()
     
-    def record_meeting(self, duration: float, title: str = None, status_callback=None) -> Meeting:
-        # Record audio
-        _, audio_path = self.audio_processor.record_meeting(duration, status_callback)
+    def record_meeting(self, duration: float, title: str = None, status_callback=None, audio_data=None) -> Meeting:
+        # Record audio or use provided audio data
+        if audio_data:
+            audio_array, sample_rate = audio_data
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = self.audio_processor.audio_dir / f"meeting_{timestamp}.wav"
+            
+            with wave.open(str(filename), 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(sample_rate)
+                wf.writeframes(audio_array.tobytes())
+            
+            audio_path = str(filename)
+        else:
+            _, audio_path = self.audio_processor.record_meeting(duration, status_callback)
         
         # Process audio
         transcript = self.audio_processor.process_audio(audio_path, status_callback)
@@ -388,7 +403,8 @@ class MeetingRecorder:
             raise ValueError(f"Meeting {meeting_id} not found")
             
         # Create exports directory if it doesn't exist
-        export_dir = Path("exports")
+        from config import EXPORTS_DIR
+        export_dir = EXPORTS_DIR
         export_dir.mkdir(exist_ok=True)
         
         filename = export_dir / f"meeting_{meeting.date.strftime('%Y%m%d_%H%M')}_{meeting.id[:8]}.{format}"

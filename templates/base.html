@@ -79,7 +79,52 @@
     </footer>
 
     <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@8.2.3/out/adapter.js"></script>
     <script>
+        // Check browser compatibility
+        function checkBrowserSupport() {
+            console.log('Checking browser support...');
+            console.log('navigator.mediaDevices:', navigator.mediaDevices);
+            console.log('MediaRecorder:', window.MediaRecorder);
+            console.log('AudioContext:', window.AudioContext || window.webkitAudioContext);
+
+            if (!navigator.mediaDevices) {
+                console.error('mediaDevices API not available');
+                showNotification('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.', 'error');
+                return false;
+            }
+
+            if (!navigator.mediaDevices.getUserMedia) {
+                console.error('getUserMedia not available');
+                showNotification('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.', 'error');
+                return false;
+            }
+
+            if (!window.MediaRecorder) {
+                console.error('MediaRecorder not available');
+                showNotification('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.', 'error');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Request microphone permission
+        async function requestMicrophonePermission() {
+            try {
+                console.log('Requesting microphone permission...');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone permission granted');
+                // Stop the stream immediately since we're just testing permissions
+                stream.getTracks().forEach(track => track.stop());
+                return true;
+            } catch (error) {
+                console.error('Microphone permission error:', error);
+                showNotification('Microphone access denied. Please allow microphone access to use recording features.', 'error');
+                return false;
+            }
+        }
+
         // Utility functions
         function formatDuration(seconds) {
             const minutes = Math.floor(seconds / 60);

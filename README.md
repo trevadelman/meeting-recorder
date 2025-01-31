@@ -7,10 +7,11 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
 ## Features
 
 - **Audio Recording**
-  - Configurable input device selection
-  - Support for multiple audio input devices
+  - Client-side recording using browser's microphone
+  - Support for all client audio input devices
   - Real-time recording progress tracking
   - Customizable recording duration
+  - Network-accessible recording capabilities
 
 - **Speech Processing**
   - Automatic speech recognition using Whisper
@@ -32,13 +33,17 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
 
 ## Requirements
 
+### Server Requirements
 - Python 3.11.11
 - Flask
-- SoundDevice
 - SpeechBrain
 - Faster Whisper
 - PyTorch
 - Additional dependencies in `requirements.txt`
+
+### Client Requirements
+- Modern web browser with microphone support (Chrome, Firefox, Safari)
+- HTTPS connection for microphone access
 
 ## Installation
 
@@ -81,10 +86,15 @@ The application can be configured through several files:
    python app.py
    ```
 
-2. Access the web interface at `http://localhost:5000`
+2. Access the web interface:
+   - Local: `https://localhost:5002`
+   - Network: `https://<server-ip>:5002`
+   
+   Note: When accessing over HTTPS, you'll need to accept the security warning for the self-signed certificate.
 
 3. Recording a Meeting:
-   - Select your preferred audio input device
+   - Allow microphone access when prompted
+   - Select your preferred input device from your computer's available microphones
    - Set the meeting duration
    - Click "Start Recording"
    - Wait for processing to complete
@@ -102,24 +112,28 @@ meeting-recorder/
 ├── app.py              # Flask application entry point
 ├── config.py           # Configuration settings
 ├── core.py            # Core functionality
+├── generate_cert.py    # SSL certificate generation
 ├── requirements.txt    # Python dependencies
 ├── templates/         # HTML templates
 │   ├── base.html
 │   ├── index.html
 │   └── meeting_detail.html
-├── static/            # Static assets
-├── recordings/        # Stored recordings
-└── exports/          # Exported files
+├── static/           # Static assets
+│   └── js/          # JavaScript modules
+│       └── audio-recorder.js  # Client-side recording
+├── recordings/       # Stored recordings
+└── exports/         # Exported files
 ```
 
 ## Development
 
 The application is structured into several main components:
 
-- **AudioProcessor**: Handles recording and audio processing
+- **AudioProcessor**: Handles audio processing and transcription
 - **DatabaseManager**: Manages meeting storage and retrieval
 - **MeetingRecorder**: Coordinates recording and processing
 - **LLMProcessor**: Handles meeting summarization
+- **Client-side Recording**: Browser-based audio capture using Web Audio API
 
 ## Contributing
 

@@ -39,6 +39,11 @@ exports/
 flask_session/
 pretrained_models/
 
+# SSL Certificates
+*.pem
+cert.*
+key.*
+
 # OS specific
 .DS_Store
 .DS_Store?

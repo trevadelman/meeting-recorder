@@ -124,47 +124,43 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/audio-recorder.js') }}"></script>
 <script>
+    const audioRecorder = new AudioRecorder();
+    let recordingStartTime;
     let recordingInterval;
     
-    // Device selection handling
-    document.getElementById('inputDevice').addEventListener('change', async (e) => {
+    // Load client-side audio devices
+    async function loadDevices() {
         try {
-            const response = await fetch('/api/devices/select', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    device_id: parseInt(e.target.value)
-                })
-            });
-            
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to select device');
+            if (!checkBrowserSupport()) {
+                return;
             }
+            
+            if (!await requestMicrophonePermission()) {
+                return;
+            }
+
+            const devices = await audioRecorder.getDevices();
+            const deviceSelect = document.getElementById('inputDevice');
+            deviceSelect.innerHTML = devices.map(device => 
+                `<option value="${device.id}" ${device.default ? 'selected' : ''}>
+                    ${device.name}
+                </option>`
+            ).join('');
             
             // Store selected device in localStorage
-            localStorage.setItem('selectedDevice', e.target.value);
-            
-        } catch (error) {
-            showNotification(error.message, 'error');
-        }
-    });
-    
-    // Restore device selection on page load
-    document.addEventListener('DOMContentLoaded', () => {
-        const savedDevice = localStorage.getItem('selectedDevice');
-        if (savedDevice) {
-            const deviceSelect = document.getElementById('inputDevice');
-            if (deviceSelect.querySelector(`option[value="${savedDevice}"]`)) {
-                deviceSelect.value = savedDevice;
-                // Trigger change event to ensure device is selected in backend
-                deviceSelect.dispatchEvent(new Event('change'));
+            if (devices.length > 0) {
+                const defaultDevice = devices.find(d => d.default) || devices[0];
+                localStorage.setItem('selectedDevice', defaultDevice.id);
             }
+        } catch (error) {
+            showNotification('Error accessing microphone: ' + error.message, 'error');
         }
-    });
+    }
+
+    // Load devices on page load
+    document.addEventListener('DOMContentLoaded', loadDevices);
     
     // Modal handling
     document.getElementById('startRecording').addEventListener('click', () => {
@@ -179,42 +175,69 @@
     document.getElementById('recordingForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        if (!checkBrowserSupport()) {
+            return;
+        }
+
         const formData = new FormData(e.target);
+        const duration = parseInt(formData.get('duration'));
+        const deviceId = document.getElementById('inputDevice').value;
         
         try {
-            const response = await fetch('/start_recording', {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(await response.text());
+            if (!await requestMicrophonePermission()) {
+                return;
             }
-            
-            const data = await response.json();
+
+            // Start client-side recording
+            await audioRecorder.startRecording(deviceId);
+            recordingStartTime = Date.now();
             
             // Hide recording modal and show progress
             document.getElementById('recordingModal').classList.add('hidden');
             document.getElementById('progressModal').classList.remove('hidden');
             
             // Start progress tracking
-            let remainingTime = formData.get('duration');
+            let remainingTime = duration;
             recordingInterval = setInterval(() => {
                 remainingTime--;
                 document.getElementById('timeRemaining').textContent = formatDuration(remainingTime);
                 
                 if (remainingTime <= 0) {
                     clearInterval(recordingInterval);
-                    pollStatus();
+                    finishRecording(formData);
                 }
             }, 1000);
-            
-            pollStatus();
             
         } catch (error) {
             showNotification(error.message, 'error');
         }
     });
+
+    // Handle recording completion
+    async function finishRecording(formData) {
+        try {
+            document.getElementById('processingStatus').textContent = 'Processing recording...';
+            
+            // Stop recording and get audio blob
+            const audioBlob = await audioRecorder.stopRecording();
+            const actualDuration = (Date.now() - recordingStartTime) / 1000;
+            
+            // Upload to server
+            const response = await audioRecorder.uploadRecording(
+                audioBlob,
+                formData.get('title'),
+                actualDuration
+            );
+            
+            document.getElementById('progressModal').classList.add('hidden');
+            showNotification('Recording completed successfully!', 'success');
+            location.reload();
+            
+        } catch (error) {
+            document.getElementById('progressModal').classList.add('hidden');
+            showNotification(error.message, 'error');
+        }
+    }
 
     // Poll recording status
     async function pollStatus() {

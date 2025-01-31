@@ -1,4 +1,7 @@
-from flask import Flask, render_template, jsonify, request, send_file, session
+from flask import Flask, render_template, jsonify, request, send_file, session, current_app, redirect
+import wave
+import io
+import numpy as np
 from markupsafe import Markup  # Changed this line
 from core import MeetingRecorder
 from config import FlaskConfig, ERROR_MESSAGES, EXPORT_FORMATS
@@ -9,8 +12,13 @@ from pathlib import Path
 import markdown
 import sqlite3
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 app.config.from_object(FlaskConfig)
+
+# Ensure static directories exist
+for dir_name in ['static', 'static/js']:
+    path = Path(dir_name)
+    path.mkdir(exist_ok=True)
 
 # Initialize recorder and state management
 recorder = MeetingRecorder()
@@ -39,6 +47,38 @@ def markdown_filter(text):
 def status_callback(message):
     """Callback for updating recording progress"""
     recording_state['progress'] = message
+
+@app.route('/upload_recording', methods=['POST'])
+def upload_recording():
+    """Handle uploaded recording from client"""
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+            
+        audio_file = request.files['audio']
+        title = request.form.get('title', '')
+        duration = float(request.form.get('duration', 0))
+        
+        # Convert audio data to format expected by core.py
+        audio_data = io.BytesIO(audio_file.read())
+        with wave.open(audio_data, 'rb') as wf:
+            audio_array = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
+            sample_rate = wf.getframerate()
+        
+        # Process the recording
+        meeting = recorder.record_meeting(
+            duration=duration,
+            title=title,
+            audio_data=(audio_array, sample_rate)
+        )
+        
+        return jsonify({
+            'message': 'Recording uploaded successfully',
+            'meeting_id': meeting.id
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/devices')
 def list_devices():
@@ -213,4 +253,45 @@ def format_datetime(dt):
     return dt.strftime("%B %d, %Y %I:%M %p")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import socket
+
+    def get_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('8.8.8.8', 1))  # Doesn't actually connect
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = '127.0.0.1'
+        finally:
+            s.close()
+        return ip
+
+    try:
+        # Check if certificate files exist
+        cert_path = Path('cert.pem')
+        key_path = Path('key.pem')
+        
+        if not cert_path.exists() or not key_path.exists():
+            print("\nGenerating new certificates...")
+            from generate_cert import generate_self_signed_cert
+            generate_self_signed_cert()
+            print("Certificates generated successfully!")
+
+        ip_address = get_ip()
+        port = 5002
+
+        print("\nStarting server...")
+        print("You can access the application at:")
+        print(f"  * Local:   https://localhost:{port}")
+        print(f"  * Network: https://{ip_address}:{port}")
+        print("\nNote: You will need to accept the security warning in your browser")
+        print("since we're using a self-signed certificate.")
+        print("\nPress CTRL+C to quit\n")
+
+        ssl_context = ('cert.pem', 'key.pem')
+        app.run(host='0.0.0.0', port=port, ssl_context=ssl_context, debug=False)
+
+    except Exception as e:
+        print(f"\nError starting HTTPS server: {e}")
+        print("Starting without SSL...")
+        app.run(host='0.0.0.0', port=5002, debug=False)
