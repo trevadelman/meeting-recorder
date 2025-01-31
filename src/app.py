@@ -2,23 +2,25 @@ from flask import Flask, render_template, jsonify, request, send_file, session, 
 import wave
 import io
 import numpy as np
-from markupsafe import Markup  # Changed this line
-from core import MeetingRecorder
-from config import FlaskConfig, ERROR_MESSAGES, EXPORT_FORMATS
-import threading
+from markupsafe import Markup
+import markdown
+import socket
+from pathlib import Path
 from datetime import datetime
 import os
-from pathlib import Path
-import markdown
-import sqlite3
+import threading
 
-app = Flask(__name__, static_url_path='/static')
+from utils import setup_python_path
+setup_python_path()
+
+from config.config import FlaskConfig, ERROR_MESSAGES, EXPORT_FORMATS, BASE_DIR
+from src.core import MeetingRecorder
+
+app = Flask(__name__, 
+           static_url_path='/static',
+           template_folder=str(BASE_DIR / 'web/templates'),
+           static_folder=str(BASE_DIR / 'web/static'))
 app.config.from_object(FlaskConfig)
-
-# Ensure static directories exist
-for dir_name in ['static', 'static/js']:
-    path = Path(dir_name)
-    path.mkdir(exist_ok=True)
 
 # Initialize recorder and state management
 recorder = MeetingRecorder()
@@ -221,13 +223,11 @@ def delete_meeting(meeting_id):
         
         # Delete any exports
         export_pattern = f"meeting_*_{meeting.id[:8]}.*"
-        for export_file in Path('exports').glob(export_pattern):
+        for export_file in Path(EXPORT_FORMATS).glob(export_pattern):
             export_file.unlink()
         
         # Delete from database
-        with sqlite3.connect(recorder.db.db_path) as conn:
-            conn.execute("DELETE FROM meetings WHERE id = ?", (meeting_id,))
-            conn.commit()
+        recorder.db.delete_meeting(meeting_id)
         
         return jsonify({'message': 'Meeting deleted successfully'})
         
@@ -252,28 +252,27 @@ def format_datetime(dt):
     """Format datetime object to human readable string"""
     return dt.strftime("%B %d, %Y %I:%M %p")
 
+def get_ip():
+    """Get the local IP address"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('8.8.8.8', 1))  # Doesn't actually connect
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
+
 if __name__ == '__main__':
-    import socket
-
-    def get_ip():
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            s.connect(('8.8.8.8', 1))  # Doesn't actually connect
-            ip = s.getsockname()[0]
-        except Exception:
-            ip = '127.0.0.1'
-        finally:
-            s.close()
-        return ip
-
     try:
         # Check if certificate files exist
-        cert_path = Path('cert.pem')
-        key_path = Path('key.pem')
+        cert_path = BASE_DIR / "config/ssl/cert.pem"
+        key_path = BASE_DIR / "config/ssl/key.pem"
         
         if not cert_path.exists() or not key_path.exists():
             print("\nGenerating new certificates...")
-            from generate_cert import generate_self_signed_cert
+            from config.ssl.generate_cert import generate_self_signed_cert
             generate_self_signed_cert()
             print("Certificates generated successfully!")
 
@@ -288,7 +287,7 @@ if __name__ == '__main__':
         print("since we're using a self-signed certificate.")
         print("\nPress CTRL+C to quit\n")
 
-        ssl_context = ('cert.pem', 'key.pem')
+        ssl_context = (str(cert_path), str(key_path))
         app.run(host='0.0.0.0', port=port, ssl_context=ssl_context, debug=False)
 
     except Exception as e:

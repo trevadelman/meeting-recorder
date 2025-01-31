@@ -66,12 +66,12 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
 
 4. Initialize the application:
    ```bash
-   python app.py
+   python src/app.py
    ```
 
 ## Configuration
 
-The application can be configured through several files:
+The application can be configured through several files in the config/ directory:
 
 - `config.py`: Main configuration file
   - Audio settings
@@ -83,7 +83,7 @@ The application can be configured through several files:
 
 1. Start the application:
    ```bash
-   python app.py
+   python src/app.py
    ```
 
 2. Access the web interface:
@@ -109,20 +109,30 @@ The application can be configured through several files:
 
 ```
 meeting-recorder/
-├── app.py              # Flask application entry point
-├── config.py           # Configuration settings
-├── core.py            # Core functionality
-├── generate_cert.py    # SSL certificate generation
-├── requirements.txt    # Python dependencies
-├── templates/         # HTML templates
-│   ├── base.html
-│   ├── index.html
-│   └── meeting_detail.html
-├── static/           # Static assets
-│   └── js/          # JavaScript modules
-│       └── audio-recorder.js  # Client-side recording
-├── recordings/       # Stored recordings
-└── exports/         # Exported files
+├── src/                # Source code
+│   ├── app.py         # Flask application entry point
+│   ├── core/          # Core functionality
+│   │   ├── audio.py   # Audio processing
+│   │   ├── db.py      # Database operations
+│   │   ├── llm.py     # LLM processing
+│   │   └── recorder.py # Meeting recorder
+│   └── utils/         # Utility functions
+├── config/            # Configuration files
+│   ├── config.py      # Main configuration
+│   └── ssl/           # SSL certificates
+├── web/              # Web-related files
+│   ├── static/       # Static assets
+│   │   └── js/       # JavaScript modules
+│   └── templates/    # HTML templates
+├── data/             # Data storage
+│   ├── recordings/   # Audio recordings
+│   ├── exports/      # Exported files
+│   └── db/           # Database files
+├── models/           # ML models
+│   └── pretrained/   # Pretrained model files
+├── tests/            # Test files
+├── requirements.txt  # Python dependencies
+└── README.md        # Documentation
 ```
 
 ## Development
@@ -142,8 +152,6 @@ The application is structured into several main components:
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
-
-
 
 ## Acknowledgments
 

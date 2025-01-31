@@ -2,16 +2,17 @@ from pathlib import Path
 import os
 
 # Base directory
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Directory Configuration
-RECORDINGS_DIR = BASE_DIR / "recordings"
-EXPORTS_DIR = BASE_DIR / "exports"
-DB_PATH = BASE_DIR / "meetings.db"
+RECORDINGS_DIR = BASE_DIR / "data/recordings"
+EXPORTS_DIR = BASE_DIR / "data/exports"
+DB_PATH = BASE_DIR / "data/db/meetings.db"
 
 # Ensure directories exist
-RECORDINGS_DIR.mkdir(exist_ok=True)
-EXPORTS_DIR.mkdir(exist_ok=True)
+RECORDINGS_DIR.mkdir(exist_ok=True, parents=True)
+EXPORTS_DIR.mkdir(exist_ok=True, parents=True)
+DB_PATH.parent.mkdir(exist_ok=True, parents=True)
 
 # Audio Configuration
 SAMPLE_RATE = 44100
@@ -46,7 +47,7 @@ class FlaskConfig:
     
     # Session configuration
     SESSION_TYPE = 'filesystem'
-    SESSION_FILE_DIR = BASE_DIR / "flask_session"
+    SESSION_FILE_DIR = BASE_DIR / "data/flask_session"
     SESSION_PERMANENT = False
     
     # Custom settings
