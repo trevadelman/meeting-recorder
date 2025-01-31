@@ -2,112 +2,201 @@
 
 {% block title %}{{ meeting.title }} - Meeting Details{% endblock %}
 
-{% block nav_actions %}
-<div class="flex space-x-2">
-    <a href="{{ url_for('index') }}" 
-       class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-        Back to List
-    </a>
-    <div class="dropdown relative inline-block">
-        <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" 
-                onclick="toggleDropdown()">
-            Export
-        </button>
-        <div id="exportDropdown" 
-             class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
-            <div class="py-1">
-                <a href="{{ url_for('export_meeting', meeting_id=meeting.id, format='txt') }}"
-                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Text File (.txt)
-                </a>
-                <a href="{{ url_for('export_meeting', meeting_id=meeting.id, format='md') }}"
-                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Markdown (.md)
-                </a>
-                <a href="{{ url_for('export_meeting', meeting_id=meeting.id, format='json') }}"
-                   class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    JSON
-                </a>
+{% block head %}
+<!-- Add Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Meeting Header -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <div class="px-4 py-5 sm:px-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">
+                        {{ meeting.title }}
+                    </h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        {{ meeting.date|format_datetime }} • 
+                        Duration: {{ meeting.duration|format_duration }}
+                    </p>
+                </div>
+                <div class="flex space-x-2">
+                    <a href="{{ url_for('export_meeting', meeting_id=meeting.id) }}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        Export
+                    </a>
+                    <button onclick="deleteMeeting('{{ meeting.id }}')"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tags Section -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg font-medium text-gray-900">Tags</h3>
+            <div class="mt-4">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {% if meeting.tags %}
+                        {% for tag in meeting.tags %}
+                            <div class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                                {{ tag }}
+                                <button onclick="removeTag('{{ meeting.id }}', '{{ tag }}')"
+                                        class="ml-2 text-blue-600 hover:text-blue-800">
+                                    ×
+                                </button>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500 text-sm">No tags added yet</p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center space-x-2">
+                    <select id="newTag" class="w-full">
+                        <option></option>
+                        {% for tag in all_tags %}
+                            {% if tag not in meeting.tags %}
+                                <option value="{{ tag }}">{{ tag }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button onclick="addTag('{{ meeting.id }}')"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Add Tag
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg font-medium text-gray-900">Summary</h3>
+            <div class="mt-2 prose max-w-none">
+                {{ meeting.summary|markdown }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Transcript Section -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg font-medium text-gray-900">Transcript</h3>
+            <div class="mt-4 space-y-4">
+                {% for segment in meeting.transcript %}
+                    <div class="border-l-4 {% if segment.speaker == 'Speaker_1' %}border-blue-500{% elif segment.speaker == 'Speaker_2' %}border-green-500{% else %}border-purple-500{% endif %} pl-4">
+                        <div class="flex items-center">
+                            <span class="font-medium text-gray-900">{{ segment.speaker }}</span>
+                            <span class="ml-2 text-sm text-gray-500">
+                                ({{ "%.1f"|format(segment.start_time) }}s - {{ "%.1f"|format(segment.end_time) }}s)
+                            </span>
+                        </div>
+                        <p class="mt-1 text-gray-700">{{ segment.text }}</p>
+                    </div>
+                {% endfor %}
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block content %}
-<div class="bg-white shadow overflow-hidden sm:rounded-lg">
-    <!-- Meeting Header -->
-    <div class="px-4 py-5 sm:px-6">
-        <h1 class="text-2xl font-bold text-gray-900">
-            {{ meeting.title }}
-        </h1>
-        <p class="mt-1 text-sm text-gray-500">
-            {{ meeting.date|format_datetime }} • Duration: {{ meeting.duration|format_duration }}
-        </p>
-    </div>
-
-    <!-- Audio Player -->
-    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-3">Audio Recording</h2>
-        <audio controls class="w-full">
-            <source src="{{ url_for('get_audio', meeting_id=meeting.id) }}" type="audio/wav">
-            Your browser does not support the audio element.
-        </audio>
-    </div>
-
-    <!-- Summary -->
-    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-3">Summary</h2>
-        <div class="prose max-w-none">
-            {% if meeting.summary %}
-                {{ meeting.summary|markdown|default(meeting.summary, true) }}
-            {% else %}
-                <p class="text-gray-500">No summary available.</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Transcript -->
-    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-3">Transcript</h2>
-        <div class="space-y-4">
-            {% for segment in meeting.transcript %}
-                <div class="flex space-x-4">
-                    <div class="w-24 flex-shrink-0">
-                        <span class="text-sm text-gray-500">
-                            {{ segment.start_time|format_duration }}
-                        </span>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-900">
-                            {{ segment.speaker }}
-                        </p>
-                        <p class="mt-1">
-                            {{ segment.text }}
-                        </p>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-{% endblock %}
-
 {% block extra_scripts %}
+<!-- Add jQuery and Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    function toggleDropdown() {
-        document.getElementById('exportDropdown').classList.toggle('hidden');
+    // Initialize Select2
+    $(document).ready(function() {
+        $('#newTag').select2({
+            placeholder: 'Type to search or create new tag',
+            allowClear: true,
+            width: '100%',
+            tags: true, // Allow creating new tags
+            createTag: function(params) {
+                const term = $.trim(params.term);
+                if (term === '') {
+                    return null;
+                }
+                return {
+                    id: term,
+                    text: term,
+                    newTag: true
+                };
+            }
+        });
+    });
+
+    async function addTag(meetingId) {
+        const select = $('#newTag');
+        const tag = select.val();
+        
+        if (!tag) {
+            showNotification('Please enter a tag', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/meetings/${meetingId}/tags`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ tag })
+            });
+            
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            
+            location.reload();
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
     }
 
-    // Close dropdown when clicking outside
-    window.onclick = function(event) {
-        if (!event.target.matches('.dropdown button')) {
-            const dropdowns = document.getElementsByClassName('dropdown-content');
-            for (const dropdown of dropdowns) {
-                if (!dropdown.classList.contains('hidden')) {
-                    dropdown.classList.add('hidden');
-                }
+    async function removeTag(meetingId, tag) {
+        if (!confirm(`Remove tag "${tag}"?`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/meetings/${meetingId}/tags/${encodeURIComponent(tag)}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                throw new Error(await response.text());
             }
+            
+            location.reload();
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    }
+
+    async function deleteMeeting(meetingId) {
+        if (!confirm('Are you sure you want to delete this meeting?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/delete/${meetingId}`, {
+                method: 'POST'
+            });
+            
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            
+            window.location.href = '/';
+        } catch (error) {
+            showNotification(error.message, 'error');
         }
     }
 </script>

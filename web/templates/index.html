@@ -2,6 +2,88 @@
 
 {% block title %}Meeting Recorder - Home{% endblock %}
 
+{% block head %}
+<!-- Add Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    /* Custom Select2 Styling */
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        min-height: 38px;
+        background-color: white;
+        padding: 2px 8px;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #f3f4f6;
+        border: none;
+        color: #1f2937;
+        border-radius: 9999px;
+        padding: 2px 8px;
+        margin: 2px 4px 2px 0;
+        font-size: 0.875rem;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: #6b7280;
+        margin-right: 4px;
+        font-size: 1rem;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #1f2937;
+        background: none;
+    }
+
+    .select2-dropdown {
+        border: none;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-radius: 0.5rem;
+        margin-top: 4px;
+        z-index: 1000;
+    }
+
+    .select2-container--open .select2-dropdown {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .select2-results__options {
+        padding: 0.5rem;
+    }
+
+    .select2-results__option {
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #f3f4f6;
+        color: #1f2937;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+        border-color: #3b82f6;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+</style>
+{% endblock %}
+
 {% block nav_actions %}
 <button id="startRecording" 
         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
@@ -77,46 +159,81 @@
     </div>
 </div>
 
-<!-- Meetings List -->
-<div class="bg-white shadow overflow-hidden sm:rounded-lg">
-    <div class="px-4 py-5 sm:px-6">
-        <h2 class="text-lg leading-6 font-medium text-gray-900">
-            Recent Meetings
-        </h2>
+<!-- Meetings List with Integrated Filter -->
+<div class="bg-white shadow sm:rounded-lg">
+    <div class="border-b border-gray-200">
+        <div class="p-6">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-900">
+                        {% if current_tags %}
+                            Filtered Meetings
+                        {% else %}
+                            All Meetings
+                        {% endif %}
+                    </h2>
+                    {% if current_tags %}
+                        <p class="mt-1 text-sm text-gray-500">
+                            Showing meetings with all selected tags
+                        </p>
+                    {% endif %}
+                </div>
+                <div class="w-full sm:w-96">
+                    <select id="tagFilter" class="w-full" multiple="multiple">
+                        {% for tag in all_tags %}
+                            <option value="{{ tag }}" {% if tag in current_tags %}selected{% endif %}>
+                                {{ tag }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="border-t border-gray-200">
+    <div class="divide-y divide-gray-200">
         {% if meetings %}
-            <ul class="divide-y divide-gray-200">
-                {% for meeting in meetings %}
-                    <li class="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1 min-w-0">
-                                <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
-                                   class="text-blue-600 hover:text-blue-800">
-                                    {{ meeting.title }}
-                                </a>
-                                <p class="mt-1 text-sm text-gray-500">
-                                    {{ meeting.date|format_datetime }} • 
-                                    Duration: {{ meeting.duration|format_duration }}
-                                </p>
-                            </div>
-                            <div class="flex space-x-2">
-                                <a href="{{ url_for('export_meeting', meeting_id=meeting.id) }}" 
-                                   class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                                    Export
-                                </a>
-                                <button onclick="deleteMeeting('{{ meeting.id }}')"
-                                        class="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
-                                    Delete
-                                </button>
-                            </div>
+            {% for meeting in meetings %}
+                <div class="p-6 hover:bg-gray-50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                            <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
+                               class="text-lg font-medium text-blue-600 hover:text-blue-800">
+                                {{ meeting.title }}
+                            </a>
+                            <p class="mt-1 text-sm text-gray-500">
+                                {{ meeting.date|format_datetime }} • 
+                                Duration: {{ meeting.duration|format_duration }}
+                            </p>
+                            {% if meeting.tags %}
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    {% for tag in meeting.tags %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            {{ tag }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
-                    </li>
-                {% endfor %}
-            </ul>
+                        <div class="flex space-x-2 ml-4">
+                            <a href="{{ url_for('export_meeting', meeting_id=meeting.id) }}" 
+                               class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                Export
+                            </a>
+                            <button onclick="deleteMeeting('{{ meeting.id }}')"
+                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
         {% else %}
-            <div class="px-4 py-5 sm:px-6 text-center text-gray-500">
-                No meetings recorded yet. Click "Start Recording" to begin!
+            <div class="p-6 text-center text-gray-500">
+                {% if current_tags %}
+                    No meetings found with the selected tags
+                {% else %}
+                    No meetings recorded yet. Click "Start Recording" to begin!
+                {% endif %}
             </div>
         {% endif %}
     </div>
@@ -124,8 +241,28 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Add jQuery and Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ url_for('static', filename='js/audio-recorder.js') }}"></script>
 <script>
+    // Initialize Select2
+    $(document).ready(function() {
+        $('#tagFilter').select2({
+            placeholder: 'Filter by tags...',
+            allowClear: true,
+            width: '100%',
+            closeOnSelect: false
+        }).on('change', function() {
+            const tags = $(this).val();
+            const params = new URLSearchParams();
+            if (tags && tags.length > 0) {
+                tags.forEach(tag => params.append('tags[]', tag));
+            }
+            window.location.href = '/?' + params.toString();
+        });
+    });
+
     const audioRecorder = new AudioRecorder();
     let recordingStartTime;
     let recordingInterval;

@@ -110,12 +110,16 @@ def select_device():
 @app.route('/')
 def index():
     """Main page - list all meetings"""
-    meetings = recorder.db.get_all_meetings()
+    tag_filters = request.args.getlist('tags[]')
+    meetings = recorder.db.get_all_meetings(tag_filters if tag_filters else None)
     devices = recorder.audio_processor.list_input_devices()
+    all_tags = recorder.db.get_all_tags()
     return render_template('index.html', 
                          meetings=meetings,
                          recording_state=recording_state,
-                         devices=devices)
+                         devices=devices,
+                         all_tags=all_tags,
+                         current_tags=tag_filters)
 
 @app.route('/start_recording', methods=['POST'])
 def start_recording():
@@ -177,7 +181,10 @@ def meeting_detail(meeting_id):
         return render_template('error.html', 
                              message=ERROR_MESSAGES['meeting_not_found']), 404
     
-    return render_template('meeting_detail.html', meeting=meeting)
+    all_tags = recorder.db.get_all_tags()
+    return render_template('meeting_detail.html', 
+                         meeting=meeting,
+                         all_tags=all_tags)
 
 @app.route('/export/<meeting_id>')
 def export_meeting(meeting_id):
@@ -232,6 +239,39 @@ def delete_meeting(meeting_id):
         
         return jsonify({'message': 'Meeting deleted successfully'})
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tags', methods=['GET'])
+def get_tags():
+    """Get all available tags"""
+    try:
+        tags = recorder.db.get_all_tags()
+        return jsonify({'tags': tags})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/meetings/<meeting_id>/tags', methods=['POST'])
+def add_tag(meeting_id):
+    """Add a tag to a meeting"""
+    try:
+        tag = request.json.get('tag', '').strip()
+        if not tag:
+            return jsonify({'error': 'No tag provided'}), 400
+            
+        if recorder.db.add_meeting_tag(meeting_id, tag):
+            return jsonify({'message': 'Tag added successfully'})
+        return jsonify({'error': 'Failed to add tag'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/meetings/<meeting_id>/tags/<tag>', methods=['DELETE'])
+def remove_tag(meeting_id, tag):
+    """Remove a tag from a meeting"""
+    try:
+        if recorder.db.remove_meeting_tag(meeting_id, tag):
+            return jsonify({'message': 'Tag removed successfully'})
+        return jsonify({'error': 'Failed to remove tag'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
