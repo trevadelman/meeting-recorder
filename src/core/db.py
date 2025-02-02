@@ -16,6 +16,7 @@ class Meeting:
     transcript: List[TranscriptSegment]
     summary: Optional[str] = None
     tags: Set[str] = None
+    email_recipient: Optional[str] = None
 
     def __post_init__(self):
         if self.tags is None:

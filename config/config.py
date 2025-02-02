@@ -47,7 +47,7 @@ LLM_TIMEOUT = 30  # seconds
 EMAIL_CONFIG = {
     'SMTP_SERVER': 'smtp.gmail.com',
     'SMTP_PORT': 587,
-    'BASE_URL': os.environ.get('BASE_URL', 'https://localhost:5002'),
+    'BASE_URL': os.environ.get('BASE_URL', 'https://192.168.0.160:5002'),
     'EMAIL_USER': os.environ.get('EMAIL_USER'),
     'EMAIL_PASSWORD': os.environ.get('EMAIL_PASSWORD')
 }
