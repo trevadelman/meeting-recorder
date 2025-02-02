@@ -32,6 +32,12 @@
         <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Title (optional)</label>
         <input type="text" name="title" class="w-full border rounded px-3 py-2" placeholder="Enter title" />
       </div>
+      {% if recorder.email_service %}
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email Notification (optional)</label>
+        <input type="email" name="email" class="w-full border rounded px-3 py-2" placeholder="Enter email address" />
+      </div>
+      {% endif %}
       <div class="flex justify-end space-x-2">
         <button id="cancelRecording" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
         <button id="startRecordingConfirm" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Start</button>
@@ -223,7 +229,8 @@
       const actualDuration = (Date.now() - recordingStartTime) / 1000;
       const formData = new FormData();
       formData.append('title', document.querySelector('input[name="title"]').value);
-      const response = await audioRecorder.uploadRecording(audioBlob, formData.get('title'), actualDuration);
+      formData.append('email', document.querySelector('input[name="email"]').value);
+      const response = await audioRecorder.uploadRecording(audioBlob, formData.get('title'), actualDuration, formData.get('email'));
       document.getElementById('progressModal').classList.add('hidden');
       showNotification('Recording completed!', 'success');
       location.reload();

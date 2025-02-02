@@ -1,5 +1,9 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,6 +42,15 @@ SPEAKER_CLUSTERING_LINKAGE = 'average'
 LLM_API_URL = "http://localhost:11434/api/generate"
 LLM_MODEL = "llama3:latest"
 LLM_TIMEOUT = 30  # seconds
+
+# Email Configuration
+EMAIL_CONFIG = {
+    'SMTP_SERVER': 'smtp.gmail.com',
+    'SMTP_PORT': 587,
+    'BASE_URL': os.environ.get('BASE_URL', 'https://localhost:5002'),
+    'EMAIL_USER': os.environ.get('EMAIL_USER'),
+    'EMAIL_PASSWORD': os.environ.get('EMAIL_PASSWORD')
+}
 
 # Flask Configuration
 class FlaskConfig:
@@ -92,7 +105,9 @@ ERROR_MESSAGES = {
     'export_error': 'Error exporting meeting',
     'database_error': 'Database error occurred',
     'device_error': 'Error accessing audio device',
-    'no_devices': 'No input devices found'
+    'no_devices': 'No input devices found',
+    'email_error': 'Error sending email',
+    'invalid_email': 'Invalid email address'
 }
 
 # Cache Configuration

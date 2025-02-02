@@ -32,6 +32,12 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
   - Meeting summaries
   - Speaker-labeled segments
 
+- **Email Notifications**
+  - Automatic email notifications after recording completion
+  - Manual email sending from meeting details
+  - HTML-formatted meeting summaries
+  - Direct links to meeting recordings
+
 ## Requirements
 
 ### Server Requirements
@@ -79,6 +85,21 @@ The application can be configured through several files in the config/ directory
   - Recording parameters
   - Export configurations
   - Flask application settings
+  - Email settings (SMTP configuration)
+
+### Email Configuration
+
+The application supports email notifications through SMTP. Configure the following environment variables in a `.env` file:
+
+```bash
+EMAIL_USER=your.email@gmail.com
+EMAIL_PASSWORD=your-app-specific-password
+BASE_URL=https://localhost:5002  # Used for meeting links in emails
+```
+
+Note: For Gmail, you'll need to use an App Password if 2FA is enabled. You can generate one at: https://myaccount.google.com/apppasswords
+
+Email functionality is optional - the application will run normally without email configuration, simply hiding email-related UI elements.
 
 ## Usage
 

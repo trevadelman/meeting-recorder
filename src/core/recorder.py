@@ -6,6 +6,7 @@ from typing import Optional, Callable
 from .audio import AudioProcessor
 from .db import DatabaseManager, Meeting
 from .llm import LLMProcessor
+from .email import EmailService
 
 class MeetingRecorder:
     def __init__(self):
@@ -15,6 +16,13 @@ class MeetingRecorder:
         self.current_recording = None
         self.recording_start_time = None
         self.status_callback = None
+        
+        # Initialize email service if credentials are available
+        try:
+            self.email_service = EmailService()
+        except ValueError:
+            print("Email credentials not found. Email functionality will be disabled.")
+            self.email_service = None
 
     def start_recording(
         self, 
@@ -109,7 +117,30 @@ class MeetingRecorder:
             status_callback("Saving meeting...")
         self.db.save_meeting(meeting)
         
+        # Send email if recipient is provided
+        if status_callback:
+            status_callback("Sending email notification...")
+        
         return meeting
+
+    def send_meeting_email(self, meeting_id: str, recipient_email: str) -> bool:
+        """Send meeting details to specified email address"""
+        meeting = self.db.get_meeting(meeting_id)
+        if not meeting:
+            raise ValueError(f"Meeting {meeting_id} not found")
+            
+        if not self.email_service:
+            raise ValueError("Email functionality is not available. Please check your email configuration.")
+            
+        return self.email_service.send_meeting_email(
+            recipient_email=recipient_email,
+            meeting_id=meeting.id,
+            title=meeting.title,
+            date=meeting.date,
+            duration=meeting.duration,
+            summary=meeting.summary,
+            transcript=meeting.transcript
+        )
 
     def export_meeting(self, meeting_id: str, format: str = 'txt') -> str:
         """Export meeting to file"""

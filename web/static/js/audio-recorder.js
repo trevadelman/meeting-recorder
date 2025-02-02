@@ -206,11 +206,14 @@ class AudioRecorder {
         return new Blob([arrayBuffer], { type: 'audio/wav' });
     }
 
-    async uploadRecording(blob, title, duration) {
+    async uploadRecording(blob, title, duration, email) {
         const formData = new FormData();
         formData.append('audio', blob, 'recording.wav');
         formData.append('title', title);
         formData.append('duration', duration);
+        if (email) {
+            formData.append('email', email);
+        }
 
         try {
             // First stop server-side recording

@@ -42,7 +42,8 @@ recording_state = {
 @app.context_processor
 def utility_processor():
     return {
-        'now': datetime.now()
+        'now': datetime.now(),
+        'recorder': recorder  # Make recorder instance available in templates
     }
 
 @app.template_filter('markdown')
@@ -66,6 +67,7 @@ def upload_recording():
         audio_file = request.files['audio']
         title = request.form.get('title', '')
         duration = float(request.form.get('duration', 0))
+        email = request.form.get('email', '').strip()
         
         # Convert audio data to format expected by core.py
         audio_data = io.BytesIO(audio_file.read())
@@ -79,6 +81,17 @@ def upload_recording():
             title=title,
             audio_data=(audio_array, sample_rate)
         )
+
+        # Send email if provided and email service is available
+        if email:
+            try:
+                if recorder.email_service:
+                    recorder.send_meeting_email(meeting.id, email)
+                else:
+                    print("Email service not available. Skipping email notification.")
+            except Exception as e:
+                print(f"Error sending email: {e}")
+                # Continue even if email fails
         
         return jsonify({
             'message': 'Recording uploaded successfully',
@@ -214,6 +227,25 @@ def meeting_detail(meeting_id):
     return render_template('meeting_detail.html', 
                          meeting=meeting,
                          all_tags=all_tags)
+
+@app.route('/api/meetings/<meeting_id>/send_email', methods=['POST'])
+def send_meeting_email(meeting_id):
+    """Send meeting details to specified email"""
+    try:
+        if not recorder.email_service:
+            return jsonify({'error': 'Email functionality is not available'}), 503
+            
+        email = request.json.get('email', '').strip()
+        if not email:
+            return jsonify({'error': 'Email address is required'}), 400
+            
+        if recorder.send_meeting_email(meeting_id, email):
+            return jsonify({'message': 'Email sent successfully'})
+        return jsonify({'error': 'Failed to send email'}), 500
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/export/<meeting_id>')
 def export_meeting(meeting_id):
