@@ -1,150 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Meeting Recorder{% endblock %}</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Custom styles -->
-    <style>
-        .recording-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: .5;
-            }
-        }
-    </style>
-    
-    {% block extra_head %}{% endblock %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Meeting Recorder{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Optionally include Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    /* Custom global styles */
+    .modal-bg { transition: opacity 0.3s ease; }
+  </style>
+  {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <a href="/" class="text-xl font-bold text-gray-800">
-                            Meeting Recorder
-                        </a>
-                    </div>
-                </div>
-                <div class="flex items-center">
-                    {% block nav_actions %}{% endblock %}
-                </div>
-            </div>
-        </div>
-    </nav>
+<body class="bg-gray-50 text-gray-800">
+  <header class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="/" class="text-2xl font-bold">Meeting Recorder</a>
+      <div class="space-x-4">
+        {% block nav_actions %}{% endblock %}
+      </div>
+    </div>
+  </header>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="mb-4 p-4 rounded-md 
-                        {% if category == 'error' %}
-                            bg-red-100 text-red-700
-                        {% elif category == 'success' %}
-                            bg-green-100 text-green-700
-                        {% else %}
-                            bg-blue-100 text-blue-700
-                        {% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+  <main class="max-w-7xl mx-auto p-4">
+    {% block content %}{% endblock %}
+  </main>
 
-        <!-- Content -->
-        {% block content %}{% endblock %}
-    </main>
+  <footer class="bg-white border-t mt-8">
+    <div class="max-w-7xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
+      &copy; {{ now.year }} Meeting Recorder. All rights reserved.
+    </div>
+  </footer>
 
-    <!-- Footer -->
-    <footer class="bg-white shadow-lg mt-8">
-        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-            <div class="text-center text-gray-500 text-sm">
-                &copy; {{ now.year }} Meeting Recorder
-            </div>
-        </div>
-    </footer>
-
-    <!-- JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@8.2.3/out/adapter.js"></script>
-    <script>
-        // Check browser compatibility
-        function checkBrowserSupport() {
-            console.log('Checking browser support...');
-            console.log('navigator.mediaDevices:', navigator.mediaDevices);
-            console.log('MediaRecorder:', window.MediaRecorder);
-            console.log('AudioContext:', window.AudioContext || window.webkitAudioContext);
-
-            if (!navigator.mediaDevices) {
-                console.error('mediaDevices API not available');
-                showNotification('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.', 'error');
-                return false;
-            }
-
-            if (!navigator.mediaDevices.getUserMedia) {
-                console.error('getUserMedia not available');
-                showNotification('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.', 'error');
-                return false;
-            }
-
-            if (!window.MediaRecorder) {
-                console.error('MediaRecorder not available');
-                showNotification('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Safari.', 'error');
-                return false;
-            }
-
-            return true;
-        }
-
-        // Request microphone permission
-        async function requestMicrophonePermission() {
-            try {
-                console.log('Requesting microphone permission...');
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('Microphone permission granted');
-                // Stop the stream immediately since we're just testing permissions
-                stream.getTracks().forEach(track => track.stop());
-                return true;
-            } catch (error) {
-                console.error('Microphone permission error:', error);
-                showNotification('Microphone access denied. Please allow microphone access to use recording features.', 'error');
-                return false;
-            }
-        }
-
-        // Utility functions
-        function formatDuration(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = Math.floor(seconds % 60);
-            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-        }
-
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg ${
-                type === 'error' ? 'bg-red-100 text-red-700' :
-                type === 'success' ? 'bg-green-100 text-green-700' :
-                'bg-blue-100 text-blue-700'
-            }`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.remove(), 5000);
-        }
-    </script>
-    
-    {% block extra_scripts %}{% endblock %}
+  <script src="https://cdn.jsdelivr.net/npm/webrtc-adapter@8.2.3/out/adapter.js"></script>
+  {% block extra_scripts %}{% endblock %}
 </body>
 </html>

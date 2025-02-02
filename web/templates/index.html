@@ -1,562 +1,279 @@
 {% extends "base.html" %}
+{% block title %}Home - Meeting Recorder{% endblock %}
 
-{% block title %}Meeting Recorder - Home{% endblock %}
-
-{% block head %}
-<!-- Add Select2 CSS -->
+{% block extra_head %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-        }
-    }
-
-    .recording-pulse {
-        animation: pulse 2s infinite;
-    }
-
-    /* Custom Select2 Styling */
-    .select2-container--default .select2-selection--multiple {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        min-height: 38px;
-        background-color: white;
-        padding: 2px 8px;
-    }
-
-    .select2-container--default.select2-container--focus .select2-selection--multiple {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-    }
-
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: #f3f4f6;
-        border: none;
-        color: #1f2937;
-        border-radius: 9999px;
-        padding: 2px 8px;
-        margin: 2px 4px 2px 0;
-        font-size: 0.875rem;
-    }
-
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-        color: #6b7280;
-        margin-right: 4px;
-        font-size: 1rem;
-    }
-
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
-        color: #1f2937;
-        background: none;
-    }
-
-    .select2-dropdown {
-        border: none;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border-radius: 0.5rem;
-        margin-top: 4px;
-        z-index: 1000;
-    }
-
-    .select2-container--open .select2-dropdown {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    .select2-results__options {
-        padding: 0.5rem;
-    }
-
-    .select2-results__option {
-        padding: 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.875rem;
-    }
-
-    .select2-container--default .select2-results__option--highlighted[aria-selected] {
-        background-color: #f3f4f6;
-        color: #1f2937;
-    }
-
-    .select2-container--default .select2-search--dropdown .select2-search__field {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.375rem;
-        padding: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .select2-container--default .select2-search--dropdown .select2-search__field:focus {
-        border-color: #3b82f6;
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-    }
+  /* Additional custom styles if needed */
 </style>
 {% endblock %}
 
 {% block nav_actions %}
-<button id="startRecording" 
-        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-    Start Recording
+<button id="startRecording" class="bg-white text-blue-600 font-semibold px-4 py-2 border border-blue-600 rounded hover:bg-blue-600 hover:text-white transition">
+  <i class="fas fa-microphone"></i> Record
 </button>
 {% endblock %}
 
 {% block content %}
-<!-- Recording Modal -->
-<div id="recordingModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3 text-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Record Meeting</h3>
-            <div class="mt-2 px-7 py-3">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2">
-                        Input Device
-                    </label>
-                    <select id="inputDevice" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        {% for device in devices %}
-                            <option value="{{ device.id }}" {% if device.default %}selected{% endif %}>
-                                {{ device.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <form id="recordingForm" class="space-y-4">
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">
-                            Meeting Title (optional)
-                        </label>
-                        <input type="text" name="title" 
-                               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <button type="button" id="cancelRecording"
-                                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                            Start
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+<div class="space-y-6">
+  <!-- Recording Modal -->
+  <div id="recordingModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center modal-bg">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+      <h3 class="text-xl font-semibold mb-4">Start a New Recording</h3>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Input Device</label>
+        <select id="inputDevice" class="w-full border rounded px-3 py-2">
+          {% for device in devices %}
+            <option value="{{ device.id }}" {% if device.default %}selected{% endif %}>{{ device.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Title (optional)</label>
+        <input type="text" name="title" class="w-full border rounded px-3 py-2" placeholder="Enter title" />
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button id="cancelRecording" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+        <button id="startRecordingConfirm" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Start</button>
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Recording Progress Modal -->
-<div id="progressModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3 text-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Recording in Progress</h3>
-            <div class="mt-2 px-7 py-3">
-                <div class="flex flex-col items-center space-y-4">
-                    <div id="recordingIndicator" class="recording-pulse inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-red-500">
-                        Recording...
-                    </div>
-                    <div id="progressText" class="text-sm text-gray-500">
-                        Duration: <span id="recordingDuration">00:00</span>
-                    </div>
-                    <button id="stopRecording" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                        Stop Recording
-                    </button>
-                </div>
-                <div id="processingContainer" class="mt-4 text-center hidden">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                    <div id="processingStatus" class="mt-2 text-sm text-gray-500"></div>
-                </div>
-            </div>
+  <!-- Recording Progress Modal -->
+  <div id="progressModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center modal-bg">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 text-center">
+      <h3 class="text-xl font-semibold mb-4">Recording in Progress</h3>
+      <div class="mb-4">
+        <div id="recordingIndicator" class="inline-block bg-red-500 text-white px-4 py-2 rounded-full animate-pulse">
+          Recording...
         </div>
+      </div>
+      <p class="text-gray-600 mb-4">Duration: <span id="recordingDuration">00:00</span></p>
+      <button id="stopRecording" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Stop Recording</button>
+      <div id="processingContainer" class="mt-4 hidden">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p id="processingStatus" class="mt-2 text-gray-600"></p>
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Meetings List with Integrated Filter -->
-<div class="bg-white shadow sm:rounded-lg">
-    <div class="border-b border-gray-200">
-        <div class="p-6">
-            <div class="space-y-4">
-                <!-- Header -->
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-900">
-                        {% if current_tags or title_search or transcript_search %}
-                            Filtered Meetings
-                        {% else %}
-                            All Meetings
-                        {% endif %}
-                    </h2>
-                    {% if current_tags or title_search or transcript_search %}
-                        <p class="mt-1 text-sm text-gray-500">
-                            {% if current_tags %}Filtered by tags{% endif %}
-                            {% if title_search %}{% if current_tags %} • {% endif %}Title contains "{{ title_search }}"{% endif %}
-                            {% if transcript_search %}{% if current_tags or title_search %} • {% endif %}Transcript contains "{{ transcript_search }}"{% endif %}
-                        </p>
-                    {% endif %}
-                </div>
-
-                <!-- Search and Filter Controls -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Title Search -->
-                    <div>
-                        <label for="titleSearch" class="block text-sm font-medium text-gray-700 mb-1">
-                            Search by Title
-                        </label>
-                        <input type="text" 
-                               id="titleSearch" 
-                               value="{{ title_search }}"
-                               placeholder="Search meeting titles..."
-                               class="search-input shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    </div>
-
-                    <!-- Transcript Search -->
-                    <div>
-                        <label for="transcriptSearch" class="block text-sm font-medium text-gray-700 mb-1">
-                            Search in Transcripts
-                        </label>
-                        <input type="text" 
-                               id="transcriptSearch" 
-                               value="{{ transcript_search }}"
-                               placeholder="Search meeting transcripts..."
-                               class="search-input shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                    </div>
-
-                    <!-- Tag Filter -->
-                    <div>
-                        <label for="tagFilter" class="block text-sm font-medium text-gray-700 mb-1">
-                            Filter by Tags
-                        </label>
-                        <select id="tagFilter" class="w-full" multiple="multiple">
-                            {% for tag in all_tags %}
-                                <option value="{{ tag }}" {% if tag in current_tags %}selected{% endif %}>
-                                    {{ tag }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="divide-y divide-gray-200">
-        {% if meetings %}
-            {% for meeting in meetings %}
-                <div class="p-6 hover:bg-gray-50">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1 min-w-0">
-                            <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" 
-                               class="text-lg font-medium text-blue-600 hover:text-blue-800">
-                                {{ meeting.title }}
-                            </a>
-                            <p class="mt-1 text-sm text-gray-500">
-                                {{ meeting.date|format_datetime }} • 
-                                Duration: {{ meeting.duration|format_duration }}
-                            </p>
-                            {% if meeting.tags %}
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    {% for tag in meeting.tags %}
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                            {{ tag }}
-                                        </span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="flex space-x-2 ml-4">
-                            <a href="{{ url_for('export_meeting', meeting_id=meeting.id) }}" 
-                               class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                Export
-                            </a>
-                            <button onclick="deleteMeeting('{{ meeting.id }}')"
-                                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
+  <!-- Meetings List and Filters -->
+  <div class="bg-white shadow rounded-lg p-6">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">
+        {% if current_tags or title_search or transcript_search %}
+          Filtered Meetings
         {% else %}
-            <div class="p-6 text-center text-gray-500">
-                {% if current_tags %}
-                    No meetings found with the selected tags
-                {% else %}
-                    No meetings recorded yet. Click "Start Recording" to begin!
-                {% endif %}
-            </div>
+          All Meetings
         {% endif %}
+      </h2>
+      {% if current_tags or title_search or transcript_search %}
+      <p class="text-gray-600 text-sm">
+        {% if current_tags %}Filtered by tags{% endif %}
+        {% if title_search %}{% if current_tags %} • {% endif %}Title contains "{{ title_search }}"{% endif %}
+        {% if transcript_search %}{% if current_tags or title_search %} • {% endif %}Transcript contains "{{ transcript_search }}"{% endif %}
+      </p>
+      {% endif %}
     </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label for="titleSearch" class="block text-sm font-medium text-gray-700 mb-1">Search Title</label>
+        <input type="text" id="titleSearch" value="{{ title_search }}" placeholder="Search title" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label for="transcriptSearch" class="block text-sm font-medium text-gray-700 mb-1">Search Transcript</label>
+        <input type="text" id="transcriptSearch" value="{{ transcript_search }}" placeholder="Search transcript" class="w-full border rounded px-3 py-2" />
+      </div>
+      <div>
+        <label for="tagFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter Tags</label>
+        <select id="tagFilter" class="w-full" multiple="multiple">
+          {% for tag in all_tags %}
+            <option value="{{ tag }}" {% if tag in current_tags %}selected{% endif %}>{{ tag }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Meetings Cards -->
+    <div class="grid grid-cols-1 gap-4">
+      {% if meetings %}
+        {% for meeting in meetings %}
+          <div class="p-4 border rounded hover:shadow-lg transition">
+            <div class="flex justify-between items-center">
+              <a href="{{ url_for('meeting_detail', meeting_id=meeting.id) }}" class="text-xl font-semibold text-blue-600 hover:underline">
+                {{ meeting.title }}
+              </a>
+              <div class="space-x-2">
+                <a href="{{ url_for('export_meeting', meeting_id=meeting.id) }}" class="inline-block bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Export</a>
+                <button onclick="deleteMeeting('{{ meeting.id }}')" class="inline-block bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Delete</button>
+              </div>
+            </div>
+            <p class="text-gray-500 text-sm mt-1">
+              {{ meeting.date|format_datetime }} &middot; Duration: {{ meeting.duration|format_duration }}
+            </p>
+            {% if meeting.tags %}
+              <div class="mt-2 flex flex-wrap gap-2">
+                {% for tag in meeting.tags %}
+                  <span class="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs">{{ tag }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-center text-gray-500">
+          {% if current_tags %}
+            No meetings found with the selected filters.
+          {% else %}
+            No meetings recorded yet. Start by clicking the "Record" button above!
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<!-- Add jQuery and Select2 JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="{{ url_for('static', filename='js/audio-recorder.js') }}"></script>
 <script>
-    // Initialize Select2 and Search
-    $(document).ready(function() {
-        // Initialize Select2
-        $('#tagFilter').select2({
-            placeholder: 'Select tags...',
-            allowClear: true,
-            width: '100%',
-            closeOnSelect: false
-        });
-
-        // Function to update filters
-        function updateFilters() {
-            const tags = $('#tagFilter').val();
-            const title = $('#titleSearch').val().trim();
-            const transcript = $('#transcriptSearch').val().trim();
-            
-            const params = new URLSearchParams();
-            
-            if (tags && tags.length > 0) {
-                tags.forEach(tag => params.append('tags[]', tag));
-            }
-            if (title) {
-                params.append('title', title);
-            }
-            if (transcript) {
-                params.append('transcript', transcript);
-            }
-            
-            window.location.href = '/?' + params.toString();
-        }
-
-        // Add debounced search handlers
-        let searchTimeout;
-        $('.search-input').on('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(updateFilters, 500);
-        });
-
-        // Handle tag changes
-        $('#tagFilter').on('change', updateFilters);
-
-        // Handle Enter key in search inputs
-        $('#titleSearch, #transcriptSearch').on('keypress', function(e) {
-            if (e.key === 'Enter') {
-                updateFilters();
-            }
-        });
+  // Initialize Select2 and search/filter behavior
+  $(document).ready(function() {
+    $('#tagFilter').select2({
+      placeholder: 'Select tags...',
+      allowClear: true,
+      width: '100%',
+      closeOnSelect: false
     });
-
-    const audioRecorder = new AudioRecorder();
-    let recordingStartTime;
-    let recordingInterval;
-    
-    // Load client-side audio devices
-    async function loadDevices() {
-        try {
-            if (!checkBrowserSupport()) {
-                return;
-            }
-            
-            if (!await requestMicrophonePermission()) {
-                return;
-            }
-
-            const devices = await audioRecorder.getDevices();
-            const deviceSelect = document.getElementById('inputDevice');
-            deviceSelect.innerHTML = devices.map(device => 
-                `<option value="${device.id}" ${device.default ? 'selected' : ''}>
-                    ${device.name}
-                </option>`
-            ).join('');
-            
-            // Store selected device in localStorage
-            if (devices.length > 0) {
-                const defaultDevice = devices.find(d => d.default) || devices[0];
-                localStorage.setItem('selectedDevice', defaultDevice.id);
-            }
-        } catch (error) {
-            showNotification('Error accessing microphone: ' + error.message, 'error');
-        }
-    }
-
-    // Load devices on page load
-    document.addEventListener('DOMContentLoaded', loadDevices);
-    
-    // Modal handling
-    document.getElementById('startRecording').addEventListener('click', () => {
-        document.getElementById('recordingModal').classList.remove('hidden');
+    let searchTimeout;
+    $('.search-input').on('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(updateFilters, 500);
     });
-
-    document.getElementById('cancelRecording').addEventListener('click', () => {
-        document.getElementById('recordingModal').classList.add('hidden');
+    $('#tagFilter').on('change', updateFilters);
+    $('#titleSearch, #transcriptSearch').on('keypress', function(e) {
+      if (e.key === 'Enter') updateFilters();
     });
-
-    // Format duration display
-    function formatDuration(seconds) {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = Math.floor(seconds % 60);
-        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    function updateFilters() {
+      const tags = $('#tagFilter').val();
+      const title = $('#titleSearch').val().trim();
+      const transcript = $('#transcriptSearch').val().trim();
+      const params = new URLSearchParams();
+      if (tags && tags.length > 0) { tags.forEach(tag => params.append('tags[]', tag)); }
+      if (title) { params.append('title', title); }
+      if (transcript) { params.append('transcript', transcript); }
+      window.location.href = '/?' + params.toString();
     }
-
-    // Recording form submission
-    document.getElementById('recordingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        if (!checkBrowserSupport()) {
-            return;
-        }
-
-        const formData = new FormData(e.target);
-        const deviceId = document.getElementById('inputDevice').value;
-        
-        try {
-            if (!await requestMicrophonePermission()) {
-                return;
-            }
-
-            // Start client-side recording
-            await audioRecorder.startRecording(deviceId);
-            recordingStartTime = Date.now();
-            
-            // Hide recording modal and show progress
-            document.getElementById('recordingModal').classList.add('hidden');
-            document.getElementById('progressModal').classList.remove('hidden');
-            
-            // Start duration tracking
-            recordingInterval = setInterval(() => {
-                const duration = (Date.now() - recordingStartTime) / 1000;
-                document.getElementById('recordingDuration').textContent = formatDuration(duration);
-            }, 1000);
-            
-        } catch (error) {
-            showNotification(error.message, 'error');
-        }
-    });
-
-    // Stop recording button handler
-    document.getElementById('stopRecording').addEventListener('click', async () => {
-        try {
-            // Stop duration counter
-            clearInterval(recordingInterval);
-            
-            // Update UI
-            document.getElementById('recordingIndicator').classList.remove('recording-pulse', 'bg-red-500');
-            document.getElementById('recordingIndicator').classList.add('bg-gray-500');
-            document.getElementById('recordingIndicator').textContent = 'Recording stopped';
-            document.getElementById('stopRecording').disabled = true;
-            
-            // Show processing UI
-            document.getElementById('processingContainer').classList.remove('hidden');
-            document.getElementById('processingStatus').textContent = 'Stopping recording...';
-            
-            // Stop client-side recording
-            const audioBlob = await audioRecorder.stopRecording();
-            const actualDuration = (Date.now() - recordingStartTime) / 1000;
-            
-            // Update processing status
-            document.getElementById('processingStatus').textContent = 'Processing audio...';
-            
-            // Upload to server
-            const formData = new FormData(document.getElementById('recordingForm'));
-            const response = await audioRecorder.uploadRecording(
-                audioBlob,
-                formData.get('title'),
-                actualDuration
-            );
-            
-            document.getElementById('progressModal').classList.add('hidden');
-            showNotification('Recording completed successfully!', 'success');
-            location.reload();
-            
-        } catch (error) {
-            document.getElementById('progressModal').classList.add('hidden');
-            showNotification(error.message, 'error');
-        }
-    });
-
-    // Show notification
-    function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `fixed bottom-4 right-4 p-4 rounded-lg shadow-lg ${
-            type === 'error' ? 'bg-red-500' : 'bg-green-500'
-        } text-white`;
-        notification.textContent = message;
-        
-        // Add to document
-        document.body.appendChild(notification);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            notification.remove();
-        }, 3000);
+  });
+  
+  // Audio recording logic
+  const audioRecorder = new AudioRecorder();
+  let recordingStartTime, recordingInterval;
+  
+  async function loadDevices() {
+    if (!checkBrowserSupport()) return;
+    if (!await requestMicrophonePermission()) return;
+    const devices = await audioRecorder.getDevices();
+    const deviceSelect = document.getElementById('inputDevice');
+    deviceSelect.innerHTML = devices.map(device =>
+      `<option value="${device.id}" ${device.default ? 'selected' : ''}>${device.name}</option>`
+    ).join('');
+  }
+  
+  document.addEventListener('DOMContentLoaded', loadDevices);
+  
+  // Modal handling
+  document.getElementById('startRecording').addEventListener('click', () => {
+    document.getElementById('recordingModal').classList.remove('hidden');
+  });
+  document.getElementById('cancelRecording').addEventListener('click', () => {
+    document.getElementById('recordingModal').classList.add('hidden');
+  });
+  
+  document.getElementById('startRecordingConfirm').addEventListener('click', async () => {
+    if (!checkBrowserSupport()) return;
+    const deviceId = document.getElementById('inputDevice').value;
+    if (!await requestMicrophonePermission()) return;
+    try {
+      await audioRecorder.startRecording(deviceId);
+      recordingStartTime = Date.now();
+      document.getElementById('recordingModal').classList.add('hidden');
+      document.getElementById('progressModal').classList.remove('hidden');
+      recordingInterval = setInterval(() => {
+        const duration = (Date.now() - recordingStartTime) / 1000;
+        document.getElementById('recordingDuration').textContent = formatDuration(duration);
+      }, 1000);
+    } catch (error) {
+      showNotification(error.message, 'error');
     }
-
-    // Check browser support
-    function checkBrowserSupport() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            showNotification('Your browser does not support audio recording', 'error');
-            return false;
-        }
-        return true;
+  });
+  
+  document.getElementById('stopRecording').addEventListener('click', async () => {
+    clearInterval(recordingInterval);
+    document.getElementById('recordingIndicator').classList.remove('bg-red-500','animate-pulse');
+    document.getElementById('recordingIndicator').classList.add('bg-gray-500');
+    document.getElementById('recordingIndicator').textContent = 'Stopping...';
+    document.getElementById('stopRecording').disabled = true;
+    document.getElementById('processingContainer').classList.remove('hidden');
+    document.getElementById('processingStatus').textContent = 'Finalizing recording...';
+    try {
+      const audioBlob = await audioRecorder.stopRecording();
+      const actualDuration = (Date.now() - recordingStartTime) / 1000;
+      const formData = new FormData();
+      formData.append('title', document.querySelector('input[name="title"]').value);
+      const response = await audioRecorder.uploadRecording(audioBlob, formData.get('title'), actualDuration);
+      document.getElementById('progressModal').classList.add('hidden');
+      showNotification('Recording completed!', 'success');
+      location.reload();
+    } catch (error) {
+      document.getElementById('progressModal').classList.add('hidden');
+      showNotification(error.message, 'error');
     }
-
-    // Request microphone permission
-    async function requestMicrophonePermission() {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-            return true;
-        } catch (error) {
-            showNotification('Microphone permission denied', 'error');
-            return false;
-        }
+  });
+  
+  function formatDuration(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+  
+  function checkBrowserSupport() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showNotification('Your browser does not support audio recording', 'error');
+      return false;
     }
-
-    // Poll recording status
-    async function pollStatus() {
-        try {
-            const response = await fetch('/recording_status');
-            const data = await response.json();
-            
-            document.getElementById('processingStatus').textContent = data.progress || '';
-            
-            if (data.status === 'complete') {
-                clearInterval(recordingInterval);
-                document.getElementById('progressModal').classList.add('hidden');
-                showNotification('Recording completed successfully!', 'success');
-                location.reload();
-            } else if (data.status === 'error') {
-                clearInterval(recordingInterval);
-                document.getElementById('progressModal').classList.add('hidden');
-                showNotification(data.progress || 'An error occurred', 'error');
-            } else {
-                setTimeout(pollStatus, 1000);
-            }
-        } catch (error) {
-            showNotification('Error checking recording status', 'error');
-        }
+    return true;
+  }
+  
+  async function requestMicrophonePermission() {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      return true;
+    } catch (error) {
+      showNotification('Microphone permission denied', 'error');
+      return false;
     }
-
-    // Delete meeting
-    async function deleteMeeting(meetingId) {
-        if (!confirm('Are you sure you want to delete this meeting?')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/delete/${meetingId}`, {
-                method: 'POST'
-            });
-            
-            if (!response.ok) {
-                throw new Error(await response.text());
-            }
-            
-            location.reload();
-        } catch (error) {
-            showNotification(error.message, 'error');
-        }
+  }
+  
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 p-4 rounded shadow-lg ${type==='error'?'bg-red-600':'bg-green-600'} text-white`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 3000);
+  }
+  
+  async function deleteMeeting(meetingId) {
+    if (!confirm('Delete this meeting?')) return;
+    try {
+      const response = await fetch(`/delete/${meetingId}`, { method: 'POST' });
+      if (!response.ok) throw new Error(await response.text());
+      location.reload();
+    } catch (error) {
+      showNotification(error.message, 'error');
     }
+  }
 </script>
 {% endblock %}
