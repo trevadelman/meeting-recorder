@@ -161,6 +161,12 @@ class MeetingRecorder:
             f.write(f"Meeting: {meeting.title}\n")
             f.write(f"Date: {meeting.date}\n")
             f.write(f"Duration: {meeting.duration} seconds\n\n")
+            
+            if meeting.notes:
+                f.write("Notes:\n")
+                f.write(meeting.notes)
+                f.write("\n\n")
+                
             f.write("Transcript:\n")
             for seg in meeting.transcript:
                 f.write(f"\n{seg.speaker} ({seg.start_time:.1f}s - {seg.end_time:.1f}s):\n")

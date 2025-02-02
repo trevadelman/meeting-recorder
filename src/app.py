@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify, request, send_file, session, current_app, redirect
 import wave
 import io
+import json
 import numpy as np
 from markupsafe import Markup
 import markdown
@@ -67,7 +68,21 @@ def upload_recording():
         audio_file = request.files['audio']
         title = request.form.get('title', '')
         duration = float(request.form.get('duration', 0))
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '')
+        notes = request.form.get('notes', '')
+        
+        # Clean up strings
+        email = email.strip() if email else ''
+        notes = notes.strip() if notes else ''
+        
+        # Parse tags
+        try:
+            tags_str = request.form.get('tags')
+            tags = json.loads(tags_str) if tags_str else []
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"Error parsing tags: {e}")
+            print(f"Raw tags data: {request.form.get('tags')}")
+            tags = []
         
         # Convert audio data to format expected by core.py
         audio_data = io.BytesIO(audio_file.read())
@@ -75,12 +90,24 @@ def upload_recording():
             audio_array = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
             sample_rate = wf.getframerate()
         
-        # Process the recording
-        meeting = recorder.record_meeting(
-            duration=duration,
-            title=title,
-            audio_data=(audio_array, sample_rate)
-        )
+        try:
+            # Process the recording
+            meeting = recorder.record_meeting(
+                duration=duration,
+                title=title,
+                audio_data=(audio_array, sample_rate)
+            )
+
+            # Add tags and notes
+            if tags:
+                for tag in tags:
+                    recorder.db.add_meeting_tag(meeting.id, tag)
+            
+            # Always update notes
+            recorder.db.update_meeting_notes(meeting.id, notes)
+        except Exception as e:
+            print(f"Error processing meeting: {e}")
+            raise
 
         # Send email if provided and email service is available
         if email:
@@ -355,6 +382,17 @@ def remove_tag(meeting_id, tag):
         if recorder.db.remove_meeting_tag(meeting_id, tag):
             return jsonify({'message': 'Tag removed successfully'})
         return jsonify({'error': 'Failed to remove tag'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/meetings/<meeting_id>/notes', methods=['POST', 'PUT'])
+def update_notes(meeting_id):
+    """Update meeting notes"""
+    try:
+        notes = request.json.get('notes', '').strip()
+        if recorder.db.update_meeting_notes(meeting_id, notes):
+            return jsonify({'message': 'Notes updated successfully'})
+        return jsonify({'error': 'Failed to update notes'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

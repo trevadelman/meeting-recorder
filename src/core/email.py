@@ -19,6 +19,10 @@ class EmailService:
         
         if not self.sender_email or not self.password:
             raise ValueError("Email credentials not found in configuration")
+            
+        # Initialize database manager
+        from .db import DatabaseManager
+        self.db = DatabaseManager()
 
     def _create_meeting_html(
         self,
@@ -37,6 +41,10 @@ class EmailService:
 
         meeting_url = f"{self.base_url}/meeting/{meeting_id}"
 
+        # Get notes from meeting
+        meeting = self.db.get_meeting(meeting_id)
+        notes = meeting.notes if meeting else None
+
         return f"""
         <html>
             <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
@@ -50,6 +58,13 @@ class EmailService:
                 <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
                     <p style="white-space: pre-line;">{summary}</p>
                 </div>
+
+                {f'''
+                <h3 style="color: #2c3e50;">Notes</h3>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p style="white-space: pre-line;">{notes}</p>
+                </div>
+                ''' if notes else ''}
                 
                 <div style="margin: 30px 0;">
                     <a href="{meeting_url}" 

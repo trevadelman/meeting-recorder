@@ -209,11 +209,16 @@ class AudioRecorder {
     async uploadRecording(blob, title, duration, email) {
         const formData = new FormData();
         formData.append('audio', blob, 'recording.wav');
-        formData.append('title', title);
+        formData.append('title', title || '');
         formData.append('duration', duration);
-        if (email) {
-            formData.append('email', email);
-        }
+        formData.append('email', email || '');
+
+        // Add tags and notes
+        const tags = $('#recordingTags').val() || [];
+        formData.append('tags', JSON.stringify(tags));
+        
+        const notes = $('#recordingNotes').val() || '';
+        formData.append('notes', notes);
 
         try {
             // First stop server-side recording
@@ -223,7 +228,8 @@ class AudioRecorder {
             });
 
             if (!stopResponse.ok) {
-                throw new Error('Failed to stop server-side recording');
+                const errorData = await stopResponse.json();
+                throw new Error(errorData.error || 'Failed to stop server-side recording');
             }
 
             // Update status and upload
@@ -234,7 +240,8 @@ class AudioRecorder {
             });
 
             if (!uploadResponse.ok) {
-                throw new Error('Failed to upload recording');
+                const errorData = await uploadResponse.json();
+                throw new Error(errorData.error || 'Failed to upload recording');
             }
 
             document.getElementById('processingStatus').textContent = 'Processing complete!';

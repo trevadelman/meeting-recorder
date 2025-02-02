@@ -17,6 +17,7 @@ class Meeting:
     summary: Optional[str] = None
     tags: Set[str] = None
     email_recipient: Optional[str] = None
+    notes: Optional[str] = None
 
     def __post_init__(self):
         if self.tags is None:
@@ -30,20 +31,41 @@ class DatabaseManager:
         self.db_path = BASE_DIR / "data/db/meetings.db"
         self.init_database()
 
+    def _check_and_migrate_schema(self, conn):
+        """Check database schema and perform any necessary migrations"""
+        print("Checking database schema...")
+        
+        # Get current columns in meetings table
+        cursor = conn.execute("PRAGMA table_info(meetings)")
+        columns = {col[1]: col[2] for col in cursor.fetchall()}
+        
+        # List of required columns with their types
+        required_columns = {
+            'id': 'TEXT PRIMARY KEY',
+            'title': 'TEXT',
+            'date': 'TEXT',
+            'duration': 'REAL',
+            'audio_path': 'TEXT',
+            'transcript': 'JSON',
+            'summary': 'TEXT',
+            'notes': 'TEXT'
+        }
+        
+        # Add any missing columns
+        for col_name, col_type in required_columns.items():
+            if col_name not in columns:
+                print(f"Adding column {col_name} ({col_type}) to meetings table...")
+                conn.execute(f"ALTER TABLE meetings ADD COLUMN {col_name} {col_type}")
+                conn.commit()
+
     def init_database(self):
         """Initialize the SQLite database with required tables"""
         self.db_path.parent.mkdir(exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
-            # Create meetings table
+            # Create meetings table with minimal required columns
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS meetings (
-                    id TEXT PRIMARY KEY,
-                    title TEXT,
-                    date TEXT,
-                    duration REAL,
-                    audio_path TEXT,
-                    transcript JSON,
-                    summary TEXT
+                    id TEXT PRIMARY KEY
                 )
             """)
             
@@ -65,6 +87,9 @@ class DatabaseManager:
                     FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
                 )
             """)
+            
+            # Check and migrate schema
+            self._check_and_migrate_schema(conn)
 
     def save_meeting(self, meeting: Meeting):
         """Save or update a meeting in the database"""
@@ -80,8 +105,8 @@ class DatabaseManager:
             # Save meeting
             conn.execute("""
                 INSERT OR REPLACE INTO meetings
-                (id, title, date, duration, audio_path, transcript, summary)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (id, title, date, duration, audio_path, transcript, summary, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 meeting.id,
                 meeting.title,
@@ -89,7 +114,8 @@ class DatabaseManager:
                 meeting.duration,
                 meeting.audio_path,
                 transcript_json,
-                meeting.summary
+                meeting.summary,
+                meeting.notes
             ))
             
             # Save tags
@@ -149,7 +175,8 @@ class DatabaseManager:
                     audio_path=result['audio_path'],
                     transcript=transcript,
                     summary=result['summary'],
-                    tags=tags
+                    tags=tags,
+                    notes=result['notes']
                 )
         return None
 
@@ -251,7 +278,8 @@ class DatabaseManager:
                     audio_path=result['audio_path'],
                     transcript=transcript,
                     summary=result['summary'],
-                    tags=tags
+                    tags=tags,
+                    notes=result['notes']
                 ))
             return meetings
 
@@ -322,4 +350,18 @@ class DatabaseManager:
                 return True
         except Exception as e:
             print(f"Error removing tag: {e}")
+            return False
+
+    def update_meeting_notes(self, meeting_id: str, notes: str) -> bool:
+        """Update meeting notes"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("""
+                    UPDATE meetings
+                    SET notes = ?
+                    WHERE id = ?
+                """, (notes, meeting_id))
+                return True
+        except Exception as e:
+            print(f"Error updating notes: {e}")
             return False
