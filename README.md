@@ -13,6 +13,7 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
   - Real-time duration tracking
   - Visual recording status and progress indicators
   - Network-accessible recording capabilities
+  - Real-time meeting metadata input (tags and notes)
 
 - **Speech Processing**
   - Automatic speech recognition using Whisper
@@ -25,18 +26,23 @@ The application is available at: https://github.com/trevadelman/meeting-recorder
   - Searchable meeting history
   - Detailed meeting information
   - Audio playback capability
+  - Real-time tag management
+  - Markdown-supported meeting notes
+  - Automatic database schema migration
 
 - **Export Options**
   - Multiple export formats (TXT, JSON, Markdown)
   - Structured transcript formatting
   - Meeting summaries
   - Speaker-labeled segments
+  - Meeting notes included in exports
 
 - **Email Notifications**
   - Automatic email notifications after recording completion
   - Manual email sending from meeting details
   - HTML-formatted meeting summaries
   - Direct links to meeting recordings
+  - Meeting notes included in emails
 
 ## Requirements
 
@@ -138,6 +144,7 @@ Both servers can run simultaneously, sharing the same core functionality:
    - Select your preferred input device from your computer's available microphones
    - Click "Start Recording"
    - Monitor recording duration in real-time
+   - Add tags and notes during recording
    - Click "Stop Recording" when finished
    - Wait for processing to complete (progress indicators will show status)
 
@@ -145,6 +152,8 @@ Both servers can run simultaneously, sharing the same core functionality:
    - View all recordings on the main page
    - Play back audio recordings
    - Export transcripts and summaries
+   - Add/edit meeting notes with markdown support
+   - Manage meeting tags
    - Delete unwanted recordings
 
 ## Project Structure
@@ -187,6 +196,9 @@ The application provides two server implementations that share core functionalit
 ### Shared Components (src/core/):
 - **AudioProcessor**: Handles audio processing and transcription
 - **DatabaseManager**: Manages meeting storage and retrieval
+  - Automatic schema migration
+  - Real-time metadata management
+  - Tag and notes support
 - **MeetingRecorder**: Coordinates recording and processing
 - **LLMProcessor**: Handles meeting summarization
 
@@ -195,6 +207,7 @@ The application provides two server implementations that share core functionalit
 - Client-side recording using Web Audio API
 - Real-time status updates
 - Traditional server-rendered pages
+- Real-time metadata input
 
 ### FastAPI Implementation (fastapi/):
 - Modern REST API for React frontend
@@ -202,6 +215,21 @@ The application provides two server implementations that share core functionalit
 - Background task processing
 - Automatic API documentation
 - Type validation with Pydantic
+
+## Database Schema Migration
+
+The application includes automatic database schema migration:
+
+- New database columns are added automatically on startup
+- Existing data is preserved during migrations
+- Migration status is logged during startup
+- Future schema changes can be added to `required_columns` in DatabaseManager
+
+To add new database columns:
+1. Add the column definition to `required_columns` in `src/core/db.py`
+2. The column will be added automatically on next server start
+3. Existing data is preserved
+4. No manual migration scripts needed
 
 ## Contributing
 

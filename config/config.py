@@ -55,7 +55,7 @@ EMAIL_CONFIG = {
 # Flask Configuration
 class FlaskConfig:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB max file size
     TEMPLATES_AUTO_RELOAD = True
     
     # Session configuration
@@ -64,7 +64,7 @@ class FlaskConfig:
     SESSION_PERMANENT = False
     
     # Custom settings
-    MAX_RECORDING_DURATION = 3600  # 1 hour
+    MAX_RECORDING_DURATION = 7200  # 2 hour
     MIN_RECORDING_DURATION = 10    # 10 seconds
     DEFAULT_RECORDING_DURATION = 60 # 1 minute
 

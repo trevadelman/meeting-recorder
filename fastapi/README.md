@@ -10,6 +10,10 @@ This directory contains a FastAPI implementation of the Meeting Recorder backend
 - Background task processing
 - CORS support for frontend integration
 - Reuses core functionality from the main application
+- Real-time meeting metadata management
+  - Markdown-supported meeting notes
+  - Tag management during recording
+  - Automatic schema migration
 
 ## Installation
 
@@ -70,6 +74,9 @@ Visit `http://localhost:8001/docs` for interactive API documentation, where you 
 - `GET /api/tags` - List all tags
 - `POST /api/meetings/{meeting_id}/tags` - Add tag to meeting
 - `DELETE /api/meetings/{meeting_id}/tags/{tag}` - Remove tag from meeting
+
+### Notes
+- `POST /api/meetings/{meeting_id}/notes` - Update meeting notes (supports markdown)
 
 ## Running Both Servers
 

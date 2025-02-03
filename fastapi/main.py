@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
@@ -20,6 +20,22 @@ app = FastAPI(
     description="API for recording, transcribing, and managing meetings with speaker diarization",
     version="1.0.0"
 )
+
+# Configure maximum upload size (100MB) and CORS
+from starlette.middleware.base import BaseHTTPMiddleware
+class MaxUploadSizeMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.method == "POST":
+            content_length = request.headers.get("content-length")
+            if content_length:
+                if int(content_length) > 100 * 1024 * 1024:  # 100MB
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": "File too large. Maximum size is 100MB"}
+                    )
+        return await call_next(request)
+
+app.add_middleware(MaxUploadSizeMiddleware)
 
 # Add CORS middleware
 app.add_middleware(
@@ -43,6 +59,7 @@ class Meeting(BaseModel):
     transcript: List[TranscriptSegment]
     summary: Optional[str] = None
     tags: Optional[List[str]] = None
+    notes: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -59,6 +76,9 @@ class RecordingStatus(BaseModel):
 
 class TagOperation(BaseModel):
     tag: str
+
+class NotesUpdate(BaseModel):
+    notes: str
 
 # API Routes
 @app.get("/api/devices", response_model=List[DeviceInfo])
@@ -123,7 +143,8 @@ async def upload_recording(
     background_tasks: BackgroundTasks,
     audio: UploadFile = File(...),
     title: Optional[str] = None,
-    duration: float = 0
+    duration: float = 0,
+    notes: Optional[str] = None
 ):
     """Handle uploaded recording"""
     try:
@@ -131,14 +152,20 @@ async def upload_recording(
         audio_data = await audio.read()
         
         # Process in background
-        background_tasks.add_task(
-            recorder.record_meeting,
+        meeting = await recorder.record_meeting(
             duration=duration,
             title=title,
             audio_data=audio_data
         )
         
-        return {"message": "Recording uploaded for processing"}
+        # Add notes if provided
+        if notes:
+            recorder.db.update_meeting_notes(meeting.id, notes)
+        
+        return {
+            "message": "Recording uploaded for processing",
+            "meeting_id": meeting.id
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -264,6 +291,16 @@ async def remove_tag(meeting_id: str, tag: str):
     if not recorder.db.remove_meeting_tag(meeting_id, tag):
         raise HTTPException(status_code=500, detail="Failed to remove tag")
     return {"message": "Tag removed successfully"}
+
+@app.post("/api/meetings/{meeting_id}/notes")
+async def update_notes(meeting_id: str, notes_update: NotesUpdate):
+    """Update meeting notes"""
+    try:
+        if not recorder.db.update_meeting_notes(meeting_id, notes_update.notes):
+            raise HTTPException(status_code=500, detail="Failed to update notes")
+        return {"message": "Notes updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
